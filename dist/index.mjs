@@ -1,0 +1,1658 @@
+class Ne {
+  constructor() {
+    this._playerId = null, this._dataChannel = null, this._pc = new RTCPeerConnection(), this._pc.ondatachannel = (r) => {
+      this._dataChannel = r.channel, this._dataChannel.onopen = () => {
+        if (this._playerId && this._dataChannel) {
+          const i = {
+            playerId: this._playerId,
+            action: "JOIN",
+            timestamp: Date.now()
+          };
+          this._dataChannel.send(JSON.stringify(i));
+        }
+      };
+    }, window.addEventListener("beforeunload", () => {
+      if (this._dataChannel && this._dataChannel.readyState === "open" && this._playerId) {
+        const r = {
+          playerId: this._playerId,
+          action: "LEAVE",
+          button: "",
+          timestamp: Date.now()
+        };
+        try {
+          this._dataChannel.send(JSON.stringify(r));
+        } catch {
+        }
+      }
+    });
+  }
+  async joinMatch() {
+    const i = new URLSearchParams(window.location.search).get("remoteSDP");
+    if (!i)
+      throw new Error("No remoteSDP found in URL parameters.");
+    const e = JSON.parse(atob(i));
+    this._playerId = e.playerId;
+    const t = e.sdp;
+    if (await this._pc.setRemoteDescription(t), t.type === "offer") {
+      const n = await this._pc.createAnswer();
+      await this._pc.setLocalDescription(n), await new Promise((g) => {
+        this._pc.onicecandidate = (f) => {
+          f.candidate || g(void 0);
+        };
+      });
+      const s = {
+        playerId: this._playerId,
+        sdp: this._pc.localDescription
+      }, u = JSON.stringify(s), a = btoa(u), c = new BroadcastChannel("touch-coop-signaling"), l = {
+        type: "answer",
+        playerId: this._playerId,
+        base64Answer: a
+      };
+      c.postMessage(l), c.close();
+    }
+  }
+  async sendMove(r) {
+    if (this._dataChannel && this._dataChannel.readyState === "open") {
+      if (!this._playerId)
+        throw new Error("Player ID is not set. Cannot send data.");
+      const i = {
+        playerId: this._playerId,
+        action: "MOVE",
+        button: r,
+        timestamp: Date.now()
+      }, e = JSON.stringify(i);
+      this._dataChannel.send(e);
+    } else
+      console.warn("Data channel is not open. Cannot send data.");
+  }
+}
+function ne(o) {
+  return o && o.__esModule && Object.prototype.hasOwnProperty.call(o, "default") ? o.default : o;
+}
+var O = {}, G, Bt;
+function re() {
+  return Bt || (Bt = 1, G = function() {
+    return typeof Promise == "function" && Promise.prototype && Promise.prototype.then;
+  }), G;
+}
+var Q = {}, U = {}, It;
+function q() {
+  if (It) return U;
+  It = 1;
+  let o;
+  const r = [
+    0,
+    // Not used
+    26,
+    44,
+    70,
+    100,
+    134,
+    172,
+    196,
+    242,
+    292,
+    346,
+    404,
+    466,
+    532,
+    581,
+    655,
+    733,
+    815,
+    901,
+    991,
+    1085,
+    1156,
+    1258,
+    1364,
+    1474,
+    1588,
+    1706,
+    1828,
+    1921,
+    2051,
+    2185,
+    2323,
+    2465,
+    2611,
+    2761,
+    2876,
+    3034,
+    3196,
+    3362,
+    3532,
+    3706
+  ];
+  return U.getSymbolSize = function(e) {
+    if (!e) throw new Error('"version" cannot be null or undefined');
+    if (e < 1 || e > 40) throw new Error('"version" should be in range from 1 to 40');
+    return e * 4 + 17;
+  }, U.getSymbolTotalCodewords = function(e) {
+    return r[e];
+  }, U.getBCHDigit = function(i) {
+    let e = 0;
+    for (; i !== 0; )
+      e++, i >>>= 1;
+    return e;
+  }, U.setToSJISFunction = function(e) {
+    if (typeof e != "function")
+      throw new Error('"toSJISFunc" is not a valid function.');
+    o = e;
+  }, U.isKanjiModeEnabled = function() {
+    return typeof o < "u";
+  }, U.toSJIS = function(e) {
+    return o(e);
+  }, U;
+}
+var W = {}, At;
+function yt() {
+  return At || (At = 1, (function(o) {
+    o.L = { bit: 1 }, o.M = { bit: 0 }, o.Q = { bit: 3 }, o.H = { bit: 2 };
+    function r(i) {
+      if (typeof i != "string")
+        throw new Error("Param is not a string");
+      switch (i.toLowerCase()) {
+        case "l":
+        case "low":
+          return o.L;
+        case "m":
+        case "medium":
+          return o.M;
+        case "q":
+        case "quartile":
+          return o.Q;
+        case "h":
+        case "high":
+          return o.H;
+        default:
+          throw new Error("Unknown EC Level: " + i);
+      }
+    }
+    o.isValid = function(e) {
+      return e && typeof e.bit < "u" && e.bit >= 0 && e.bit < 4;
+    }, o.from = function(e, t) {
+      if (o.isValid(e))
+        return e;
+      try {
+        return r(e);
+      } catch {
+        return t;
+      }
+    };
+  })(W)), W;
+}
+var Z, Rt;
+function oe() {
+  if (Rt) return Z;
+  Rt = 1;
+  function o() {
+    this.buffer = [], this.length = 0;
+  }
+  return o.prototype = {
+    get: function(r) {
+      const i = Math.floor(r / 8);
+      return (this.buffer[i] >>> 7 - r % 8 & 1) === 1;
+    },
+    put: function(r, i) {
+      for (let e = 0; e < i; e++)
+        this.putBit((r >>> i - e - 1 & 1) === 1);
+    },
+    getLengthInBits: function() {
+      return this.length;
+    },
+    putBit: function(r) {
+      const i = Math.floor(this.length / 8);
+      this.buffer.length <= i && this.buffer.push(0), r && (this.buffer[i] |= 128 >>> this.length % 8), this.length++;
+    }
+  }, Z = o, Z;
+}
+var X, Pt;
+function ie() {
+  if (Pt) return X;
+  Pt = 1;
+  function o(r) {
+    if (!r || r < 1)
+      throw new Error("BitMatrix size must be defined and greater than 0");
+    this.size = r, this.data = new Uint8Array(r * r), this.reservedBit = new Uint8Array(r * r);
+  }
+  return o.prototype.set = function(r, i, e, t) {
+    const n = r * this.size + i;
+    this.data[n] = e, t && (this.reservedBit[n] = !0);
+  }, o.prototype.get = function(r, i) {
+    return this.data[r * this.size + i];
+  }, o.prototype.xor = function(r, i, e) {
+    this.data[r * this.size + i] ^= e;
+  }, o.prototype.isReserved = function(r, i) {
+    return this.reservedBit[r * this.size + i];
+  }, X = o, X;
+}
+var $ = {}, Nt;
+function se() {
+  return Nt || (Nt = 1, (function(o) {
+    const r = q().getSymbolSize;
+    o.getRowColCoords = function(e) {
+      if (e === 1) return [];
+      const t = Math.floor(e / 7) + 2, n = r(e), s = n === 145 ? 26 : Math.ceil((n - 13) / (2 * t - 2)) * 2, u = [n - 7];
+      for (let a = 1; a < t - 1; a++)
+        u[a] = u[a - 1] - s;
+      return u.push(6), u.reverse();
+    }, o.getPositions = function(e) {
+      const t = [], n = o.getRowColCoords(e), s = n.length;
+      for (let u = 0; u < s; u++)
+        for (let a = 0; a < s; a++)
+          u === 0 && a === 0 || // top-left
+          u === 0 && a === s - 1 || // bottom-left
+          u === s - 1 && a === 0 || t.push([n[u], n[a]]);
+      return t;
+    };
+  })($)), $;
+}
+var tt = {}, St;
+function ae() {
+  if (St) return tt;
+  St = 1;
+  const o = q().getSymbolSize, r = 7;
+  return tt.getPositions = function(e) {
+    const t = o(e);
+    return [
+      // top-left
+      [0, 0],
+      // top-right
+      [t - r, 0],
+      // bottom-left
+      [0, t - r]
+    ];
+  }, tt;
+}
+var et = {}, Mt;
+function ue() {
+  return Mt || (Mt = 1, (function(o) {
+    o.Patterns = {
+      PATTERN000: 0,
+      PATTERN001: 1,
+      PATTERN010: 2,
+      PATTERN011: 3,
+      PATTERN100: 4,
+      PATTERN101: 5,
+      PATTERN110: 6,
+      PATTERN111: 7
+    };
+    const r = {
+      N1: 3,
+      N2: 3,
+      N3: 40,
+      N4: 10
+    };
+    o.isValid = function(t) {
+      return t != null && t !== "" && !isNaN(t) && t >= 0 && t <= 7;
+    }, o.from = function(t) {
+      return o.isValid(t) ? parseInt(t, 10) : void 0;
+    }, o.getPenaltyN1 = function(t) {
+      const n = t.size;
+      let s = 0, u = 0, a = 0, c = null, l = null;
+      for (let g = 0; g < n; g++) {
+        u = a = 0, c = l = null;
+        for (let f = 0; f < n; f++) {
+          let d = t.get(g, f);
+          d === c ? u++ : (u >= 5 && (s += r.N1 + (u - 5)), c = d, u = 1), d = t.get(f, g), d === l ? a++ : (a >= 5 && (s += r.N1 + (a - 5)), l = d, a = 1);
+        }
+        u >= 5 && (s += r.N1 + (u - 5)), a >= 5 && (s += r.N1 + (a - 5));
+      }
+      return s;
+    }, o.getPenaltyN2 = function(t) {
+      const n = t.size;
+      let s = 0;
+      for (let u = 0; u < n - 1; u++)
+        for (let a = 0; a < n - 1; a++) {
+          const c = t.get(u, a) + t.get(u, a + 1) + t.get(u + 1, a) + t.get(u + 1, a + 1);
+          (c === 4 || c === 0) && s++;
+        }
+      return s * r.N2;
+    }, o.getPenaltyN3 = function(t) {
+      const n = t.size;
+      let s = 0, u = 0, a = 0;
+      for (let c = 0; c < n; c++) {
+        u = a = 0;
+        for (let l = 0; l < n; l++)
+          u = u << 1 & 2047 | t.get(c, l), l >= 10 && (u === 1488 || u === 93) && s++, a = a << 1 & 2047 | t.get(l, c), l >= 10 && (a === 1488 || a === 93) && s++;
+      }
+      return s * r.N3;
+    }, o.getPenaltyN4 = function(t) {
+      let n = 0;
+      const s = t.data.length;
+      for (let a = 0; a < s; a++) n += t.data[a];
+      return Math.abs(Math.ceil(n * 100 / s / 5) - 10) * r.N4;
+    };
+    function i(e, t, n) {
+      switch (e) {
+        case o.Patterns.PATTERN000:
+          return (t + n) % 2 === 0;
+        case o.Patterns.PATTERN001:
+          return t % 2 === 0;
+        case o.Patterns.PATTERN010:
+          return n % 3 === 0;
+        case o.Patterns.PATTERN011:
+          return (t + n) % 3 === 0;
+        case o.Patterns.PATTERN100:
+          return (Math.floor(t / 2) + Math.floor(n / 3)) % 2 === 0;
+        case o.Patterns.PATTERN101:
+          return t * n % 2 + t * n % 3 === 0;
+        case o.Patterns.PATTERN110:
+          return (t * n % 2 + t * n % 3) % 2 === 0;
+        case o.Patterns.PATTERN111:
+          return (t * n % 3 + (t + n) % 2) % 2 === 0;
+        default:
+          throw new Error("bad maskPattern:" + e);
+      }
+    }
+    o.applyMask = function(t, n) {
+      const s = n.size;
+      for (let u = 0; u < s; u++)
+        for (let a = 0; a < s; a++)
+          n.isReserved(a, u) || n.xor(a, u, i(t, a, u));
+    }, o.getBestMask = function(t, n) {
+      const s = Object.keys(o.Patterns).length;
+      let u = 0, a = 1 / 0;
+      for (let c = 0; c < s; c++) {
+        n(c), o.applyMask(c, t);
+        const l = o.getPenaltyN1(t) + o.getPenaltyN2(t) + o.getPenaltyN3(t) + o.getPenaltyN4(t);
+        o.applyMask(c, t), l < a && (a = l, u = c);
+      }
+      return u;
+    };
+  })(et)), et;
+}
+var j = {}, bt;
+function Qt() {
+  if (bt) return j;
+  bt = 1;
+  const o = yt(), r = [
+    // L  M  Q  H
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2,
+    1,
+    2,
+    2,
+    4,
+    1,
+    2,
+    4,
+    4,
+    2,
+    4,
+    4,
+    4,
+    2,
+    4,
+    6,
+    5,
+    2,
+    4,
+    6,
+    6,
+    2,
+    5,
+    8,
+    8,
+    4,
+    5,
+    8,
+    8,
+    4,
+    5,
+    8,
+    11,
+    4,
+    8,
+    10,
+    11,
+    4,
+    9,
+    12,
+    16,
+    4,
+    9,
+    16,
+    16,
+    6,
+    10,
+    12,
+    18,
+    6,
+    10,
+    17,
+    16,
+    6,
+    11,
+    16,
+    19,
+    6,
+    13,
+    18,
+    21,
+    7,
+    14,
+    21,
+    25,
+    8,
+    16,
+    20,
+    25,
+    8,
+    17,
+    23,
+    25,
+    9,
+    17,
+    23,
+    34,
+    9,
+    18,
+    25,
+    30,
+    10,
+    20,
+    27,
+    32,
+    12,
+    21,
+    29,
+    35,
+    12,
+    23,
+    34,
+    37,
+    12,
+    25,
+    34,
+    40,
+    13,
+    26,
+    35,
+    42,
+    14,
+    28,
+    38,
+    45,
+    15,
+    29,
+    40,
+    48,
+    16,
+    31,
+    43,
+    51,
+    17,
+    33,
+    45,
+    54,
+    18,
+    35,
+    48,
+    57,
+    19,
+    37,
+    51,
+    60,
+    19,
+    38,
+    53,
+    63,
+    20,
+    40,
+    56,
+    66,
+    21,
+    43,
+    59,
+    70,
+    22,
+    45,
+    62,
+    74,
+    24,
+    47,
+    65,
+    77,
+    25,
+    49,
+    68,
+    81
+  ], i = [
+    // L  M  Q  H
+    7,
+    10,
+    13,
+    17,
+    10,
+    16,
+    22,
+    28,
+    15,
+    26,
+    36,
+    44,
+    20,
+    36,
+    52,
+    64,
+    26,
+    48,
+    72,
+    88,
+    36,
+    64,
+    96,
+    112,
+    40,
+    72,
+    108,
+    130,
+    48,
+    88,
+    132,
+    156,
+    60,
+    110,
+    160,
+    192,
+    72,
+    130,
+    192,
+    224,
+    80,
+    150,
+    224,
+    264,
+    96,
+    176,
+    260,
+    308,
+    104,
+    198,
+    288,
+    352,
+    120,
+    216,
+    320,
+    384,
+    132,
+    240,
+    360,
+    432,
+    144,
+    280,
+    408,
+    480,
+    168,
+    308,
+    448,
+    532,
+    180,
+    338,
+    504,
+    588,
+    196,
+    364,
+    546,
+    650,
+    224,
+    416,
+    600,
+    700,
+    224,
+    442,
+    644,
+    750,
+    252,
+    476,
+    690,
+    816,
+    270,
+    504,
+    750,
+    900,
+    300,
+    560,
+    810,
+    960,
+    312,
+    588,
+    870,
+    1050,
+    336,
+    644,
+    952,
+    1110,
+    360,
+    700,
+    1020,
+    1200,
+    390,
+    728,
+    1050,
+    1260,
+    420,
+    784,
+    1140,
+    1350,
+    450,
+    812,
+    1200,
+    1440,
+    480,
+    868,
+    1290,
+    1530,
+    510,
+    924,
+    1350,
+    1620,
+    540,
+    980,
+    1440,
+    1710,
+    570,
+    1036,
+    1530,
+    1800,
+    570,
+    1064,
+    1590,
+    1890,
+    600,
+    1120,
+    1680,
+    1980,
+    630,
+    1204,
+    1770,
+    2100,
+    660,
+    1260,
+    1860,
+    2220,
+    720,
+    1316,
+    1950,
+    2310,
+    750,
+    1372,
+    2040,
+    2430
+  ];
+  return j.getBlocksCount = function(t, n) {
+    switch (n) {
+      case o.L:
+        return r[(t - 1) * 4 + 0];
+      case o.M:
+        return r[(t - 1) * 4 + 1];
+      case o.Q:
+        return r[(t - 1) * 4 + 2];
+      case o.H:
+        return r[(t - 1) * 4 + 3];
+      default:
+        return;
+    }
+  }, j.getTotalCodewordsCount = function(t, n) {
+    switch (n) {
+      case o.L:
+        return i[(t - 1) * 4 + 0];
+      case o.M:
+        return i[(t - 1) * 4 + 1];
+      case o.Q:
+        return i[(t - 1) * 4 + 2];
+      case o.H:
+        return i[(t - 1) * 4 + 3];
+      default:
+        return;
+    }
+  }, j;
+}
+var nt = {}, V = {}, Tt;
+function ce() {
+  if (Tt) return V;
+  Tt = 1;
+  const o = new Uint8Array(512), r = new Uint8Array(256);
+  return (function() {
+    let e = 1;
+    for (let t = 0; t < 255; t++)
+      o[t] = e, r[e] = t, e <<= 1, e & 256 && (e ^= 285);
+    for (let t = 255; t < 512; t++)
+      o[t] = o[t - 255];
+  })(), V.log = function(e) {
+    if (e < 1) throw new Error("log(" + e + ")");
+    return r[e];
+  }, V.exp = function(e) {
+    return o[e];
+  }, V.mul = function(e, t) {
+    return e === 0 || t === 0 ? 0 : o[r[e] + r[t]];
+  }, V;
+}
+var _t;
+function le() {
+  return _t || (_t = 1, (function(o) {
+    const r = ce();
+    o.mul = function(e, t) {
+      const n = new Uint8Array(e.length + t.length - 1);
+      for (let s = 0; s < e.length; s++)
+        for (let u = 0; u < t.length; u++)
+          n[s + u] ^= r.mul(e[s], t[u]);
+      return n;
+    }, o.mod = function(e, t) {
+      let n = new Uint8Array(e);
+      for (; n.length - t.length >= 0; ) {
+        const s = n[0];
+        for (let a = 0; a < t.length; a++)
+          n[a] ^= r.mul(t[a], s);
+        let u = 0;
+        for (; u < n.length && n[u] === 0; ) u++;
+        n = n.slice(u);
+      }
+      return n;
+    }, o.generateECPolynomial = function(e) {
+      let t = new Uint8Array([1]);
+      for (let n = 0; n < e; n++)
+        t = o.mul(t, new Uint8Array([1, r.exp(n)]));
+      return t;
+    };
+  })(nt)), nt;
+}
+var rt, Lt;
+function fe() {
+  if (Lt) return rt;
+  Lt = 1;
+  const o = le();
+  function r(i) {
+    this.genPoly = void 0, this.degree = i, this.degree && this.initialize(this.degree);
+  }
+  return r.prototype.initialize = function(e) {
+    this.degree = e, this.genPoly = o.generateECPolynomial(this.degree);
+  }, r.prototype.encode = function(e) {
+    if (!this.genPoly)
+      throw new Error("Encoder not initialized");
+    const t = new Uint8Array(e.length + this.degree);
+    t.set(e);
+    const n = o.mod(t, this.genPoly), s = this.degree - n.length;
+    if (s > 0) {
+      const u = new Uint8Array(this.degree);
+      return u.set(n, s), u;
+    }
+    return n;
+  }, rt = r, rt;
+}
+var ot = {}, it = {}, st = {}, Dt;
+function Wt() {
+  return Dt || (Dt = 1, st.isValid = function(r) {
+    return !isNaN(r) && r >= 1 && r <= 40;
+  }), st;
+}
+var _ = {}, vt;
+function Zt() {
+  if (vt) return _;
+  vt = 1;
+  const o = "[0-9]+", r = "[A-Z $%*+\\-./:]+";
+  let i = "(?:[u3000-u303F]|[u3040-u309F]|[u30A0-u30FF]|[uFF00-uFFEF]|[u4E00-u9FAF]|[u2605-u2606]|[u2190-u2195]|u203B|[u2010u2015u2018u2019u2025u2026u201Cu201Du2225u2260]|[u0391-u0451]|[u00A7u00A8u00B1u00B4u00D7u00F7])+";
+  i = i.replace(/u/g, "\\u");
+  const e = "(?:(?![A-Z0-9 $%*+\\-./:]|" + i + `)(?:.|[\r
+]))+`;
+  _.KANJI = new RegExp(i, "g"), _.BYTE_KANJI = new RegExp("[^A-Z0-9 $%*+\\-./:]+", "g"), _.BYTE = new RegExp(e, "g"), _.NUMERIC = new RegExp(o, "g"), _.ALPHANUMERIC = new RegExp(r, "g");
+  const t = new RegExp("^" + i + "$"), n = new RegExp("^" + o + "$"), s = new RegExp("^[A-Z0-9 $%*+\\-./:]+$");
+  return _.testKanji = function(a) {
+    return t.test(a);
+  }, _.testNumeric = function(a) {
+    return n.test(a);
+  }, _.testAlphanumeric = function(a) {
+    return s.test(a);
+  }, _;
+}
+var Ut;
+function F() {
+  return Ut || (Ut = 1, (function(o) {
+    const r = Wt(), i = Zt();
+    o.NUMERIC = {
+      id: "Numeric",
+      bit: 1,
+      ccBits: [10, 12, 14]
+    }, o.ALPHANUMERIC = {
+      id: "Alphanumeric",
+      bit: 2,
+      ccBits: [9, 11, 13]
+    }, o.BYTE = {
+      id: "Byte",
+      bit: 4,
+      ccBits: [8, 16, 16]
+    }, o.KANJI = {
+      id: "Kanji",
+      bit: 8,
+      ccBits: [8, 10, 12]
+    }, o.MIXED = {
+      bit: -1
+    }, o.getCharCountIndicator = function(n, s) {
+      if (!n.ccBits) throw new Error("Invalid mode: " + n);
+      if (!r.isValid(s))
+        throw new Error("Invalid version: " + s);
+      return s >= 1 && s < 10 ? n.ccBits[0] : s < 27 ? n.ccBits[1] : n.ccBits[2];
+    }, o.getBestModeForData = function(n) {
+      return i.testNumeric(n) ? o.NUMERIC : i.testAlphanumeric(n) ? o.ALPHANUMERIC : i.testKanji(n) ? o.KANJI : o.BYTE;
+    }, o.toString = function(n) {
+      if (n && n.id) return n.id;
+      throw new Error("Invalid mode");
+    }, o.isValid = function(n) {
+      return n && n.bit && n.ccBits;
+    };
+    function e(t) {
+      if (typeof t != "string")
+        throw new Error("Param is not a string");
+      switch (t.toLowerCase()) {
+        case "numeric":
+          return o.NUMERIC;
+        case "alphanumeric":
+          return o.ALPHANUMERIC;
+        case "kanji":
+          return o.KANJI;
+        case "byte":
+          return o.BYTE;
+        default:
+          throw new Error("Unknown mode: " + t);
+      }
+    }
+    o.from = function(n, s) {
+      if (o.isValid(n))
+        return n;
+      try {
+        return e(n);
+      } catch {
+        return s;
+      }
+    };
+  })(it)), it;
+}
+var qt;
+function de() {
+  return qt || (qt = 1, (function(o) {
+    const r = q(), i = Qt(), e = yt(), t = F(), n = Wt(), s = 7973, u = r.getBCHDigit(s);
+    function a(f, d, N) {
+      for (let S = 1; S <= 40; S++)
+        if (d <= o.getCapacity(S, N, f))
+          return S;
+    }
+    function c(f, d) {
+      return t.getCharCountIndicator(f, d) + 4;
+    }
+    function l(f, d) {
+      let N = 0;
+      return f.forEach(function(S) {
+        const b = c(S.mode, d);
+        N += b + S.getBitsLength();
+      }), N;
+    }
+    function g(f, d) {
+      for (let N = 1; N <= 40; N++)
+        if (l(f, N) <= o.getCapacity(N, d, t.MIXED))
+          return N;
+    }
+    o.from = function(d, N) {
+      return n.isValid(d) ? parseInt(d, 10) : N;
+    }, o.getCapacity = function(d, N, S) {
+      if (!n.isValid(d))
+        throw new Error("Invalid QR Code version");
+      typeof S > "u" && (S = t.BYTE);
+      const b = r.getSymbolTotalCodewords(d), A = i.getTotalCodewordsCount(d, N), M = (b - A) * 8;
+      if (S === t.MIXED) return M;
+      const R = M - c(S, d);
+      switch (S) {
+        case t.NUMERIC:
+          return Math.floor(R / 10 * 3);
+        case t.ALPHANUMERIC:
+          return Math.floor(R / 11 * 2);
+        case t.KANJI:
+          return Math.floor(R / 13);
+        case t.BYTE:
+        default:
+          return Math.floor(R / 8);
+      }
+    }, o.getBestVersionForData = function(d, N) {
+      let S;
+      const b = e.from(N, e.M);
+      if (Array.isArray(d)) {
+        if (d.length > 1)
+          return g(d, b);
+        if (d.length === 0)
+          return 1;
+        S = d[0];
+      } else
+        S = d;
+      return a(S.mode, S.getLength(), b);
+    }, o.getEncodedBits = function(d) {
+      if (!n.isValid(d) || d < 7)
+        throw new Error("Invalid QR Code version");
+      let N = d << 12;
+      for (; r.getBCHDigit(N) - u >= 0; )
+        N ^= s << r.getBCHDigit(N) - u;
+      return d << 12 | N;
+    };
+  })(ot)), ot;
+}
+var at = {}, Ft;
+function he() {
+  if (Ft) return at;
+  Ft = 1;
+  const o = q(), r = 1335, i = 21522, e = o.getBCHDigit(r);
+  return at.getEncodedBits = function(n, s) {
+    const u = n.bit << 3 | s;
+    let a = u << 10;
+    for (; o.getBCHDigit(a) - e >= 0; )
+      a ^= r << o.getBCHDigit(a) - e;
+    return (u << 10 | a) ^ i;
+  }, at;
+}
+var ut = {}, ct, kt;
+function ge() {
+  if (kt) return ct;
+  kt = 1;
+  const o = F();
+  function r(i) {
+    this.mode = o.NUMERIC, this.data = i.toString();
+  }
+  return r.getBitsLength = function(e) {
+    return 10 * Math.floor(e / 3) + (e % 3 ? e % 3 * 3 + 1 : 0);
+  }, r.prototype.getLength = function() {
+    return this.data.length;
+  }, r.prototype.getBitsLength = function() {
+    return r.getBitsLength(this.data.length);
+  }, r.prototype.write = function(e) {
+    let t, n, s;
+    for (t = 0; t + 3 <= this.data.length; t += 3)
+      n = this.data.substr(t, 3), s = parseInt(n, 10), e.put(s, 10);
+    const u = this.data.length - t;
+    u > 0 && (n = this.data.substr(t), s = parseInt(n, 10), e.put(s, u * 3 + 1));
+  }, ct = r, ct;
+}
+var lt, Ot;
+function we() {
+  if (Ot) return lt;
+  Ot = 1;
+  const o = F(), r = [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
+    " ",
+    "$",
+    "%",
+    "*",
+    "+",
+    "-",
+    ".",
+    "/",
+    ":"
+  ];
+  function i(e) {
+    this.mode = o.ALPHANUMERIC, this.data = e;
+  }
+  return i.getBitsLength = function(t) {
+    return 11 * Math.floor(t / 2) + 6 * (t % 2);
+  }, i.prototype.getLength = function() {
+    return this.data.length;
+  }, i.prototype.getBitsLength = function() {
+    return i.getBitsLength(this.data.length);
+  }, i.prototype.write = function(t) {
+    let n;
+    for (n = 0; n + 2 <= this.data.length; n += 2) {
+      let s = r.indexOf(this.data[n]) * 45;
+      s += r.indexOf(this.data[n + 1]), t.put(s, 11);
+    }
+    this.data.length % 2 && t.put(r.indexOf(this.data[n]), 6);
+  }, lt = i, lt;
+}
+var ft, Jt;
+function me() {
+  if (Jt) return ft;
+  Jt = 1;
+  const o = F();
+  function r(i) {
+    this.mode = o.BYTE, typeof i == "string" ? this.data = new TextEncoder().encode(i) : this.data = new Uint8Array(i);
+  }
+  return r.getBitsLength = function(e) {
+    return e * 8;
+  }, r.prototype.getLength = function() {
+    return this.data.length;
+  }, r.prototype.getBitsLength = function() {
+    return r.getBitsLength(this.data.length);
+  }, r.prototype.write = function(i) {
+    for (let e = 0, t = this.data.length; e < t; e++)
+      i.put(this.data[e], 8);
+  }, ft = r, ft;
+}
+var dt, Vt;
+function ye() {
+  if (Vt) return dt;
+  Vt = 1;
+  const o = F(), r = q();
+  function i(e) {
+    this.mode = o.KANJI, this.data = e;
+  }
+  return i.getBitsLength = function(t) {
+    return t * 13;
+  }, i.prototype.getLength = function() {
+    return this.data.length;
+  }, i.prototype.getBitsLength = function() {
+    return i.getBitsLength(this.data.length);
+  }, i.prototype.write = function(e) {
+    let t;
+    for (t = 0; t < this.data.length; t++) {
+      let n = r.toSJIS(this.data[t]);
+      if (n >= 33088 && n <= 40956)
+        n -= 33088;
+      else if (n >= 57408 && n <= 60351)
+        n -= 49472;
+      else
+        throw new Error(
+          "Invalid SJIS character: " + this.data[t] + `
+Make sure your charset is UTF-8`
+        );
+      n = (n >>> 8 & 255) * 192 + (n & 255), e.put(n, 13);
+    }
+  }, dt = i, dt;
+}
+var ht = { exports: {} }, zt;
+function pe() {
+  return zt || (zt = 1, (function(o) {
+    var r = {
+      single_source_shortest_paths: function(i, e, t) {
+        var n = {}, s = {};
+        s[e] = 0;
+        var u = r.PriorityQueue.make();
+        u.push(e, 0);
+        for (var a, c, l, g, f, d, N, S, b; !u.empty(); ) {
+          a = u.pop(), c = a.value, g = a.cost, f = i[c] || {};
+          for (l in f)
+            f.hasOwnProperty(l) && (d = f[l], N = g + d, S = s[l], b = typeof s[l] > "u", (b || S > N) && (s[l] = N, u.push(l, N), n[l] = c));
+        }
+        if (typeof t < "u" && typeof s[t] > "u") {
+          var A = ["Could not find a path from ", e, " to ", t, "."].join("");
+          throw new Error(A);
+        }
+        return n;
+      },
+      extract_shortest_path_from_predecessor_list: function(i, e) {
+        for (var t = [], n = e; n; )
+          t.push(n), i[n], n = i[n];
+        return t.reverse(), t;
+      },
+      find_path: function(i, e, t) {
+        var n = r.single_source_shortest_paths(i, e, t);
+        return r.extract_shortest_path_from_predecessor_list(
+          n,
+          t
+        );
+      },
+      /**
+       * A very naive priority queue implementation.
+       */
+      PriorityQueue: {
+        make: function(i) {
+          var e = r.PriorityQueue, t = {}, n;
+          i = i || {};
+          for (n in e)
+            e.hasOwnProperty(n) && (t[n] = e[n]);
+          return t.queue = [], t.sorter = i.sorter || e.default_sorter, t;
+        },
+        default_sorter: function(i, e) {
+          return i.cost - e.cost;
+        },
+        /**
+         * Add a new item to the queue and ensure the highest priority element
+         * is at the front of the queue.
+         */
+        push: function(i, e) {
+          var t = { value: i, cost: e };
+          this.queue.push(t), this.queue.sort(this.sorter);
+        },
+        /**
+         * Return the highest priority element in the queue.
+         */
+        pop: function() {
+          return this.queue.shift();
+        },
+        empty: function() {
+          return this.queue.length === 0;
+        }
+      }
+    };
+    o.exports = r;
+  })(ht)), ht.exports;
+}
+var jt;
+function Ce() {
+  return jt || (jt = 1, (function(o) {
+    const r = F(), i = ge(), e = we(), t = me(), n = ye(), s = Zt(), u = q(), a = pe();
+    function c(A) {
+      return unescape(encodeURIComponent(A)).length;
+    }
+    function l(A, M, R) {
+      const B = [];
+      let T;
+      for (; (T = A.exec(R)) !== null; )
+        B.push({
+          data: T[0],
+          index: T.index,
+          mode: M,
+          length: T[0].length
+        });
+      return B;
+    }
+    function g(A) {
+      const M = l(s.NUMERIC, r.NUMERIC, A), R = l(s.ALPHANUMERIC, r.ALPHANUMERIC, A);
+      let B, T;
+      return u.isKanjiModeEnabled() ? (B = l(s.BYTE, r.BYTE, A), T = l(s.KANJI, r.KANJI, A)) : (B = l(s.BYTE_KANJI, r.BYTE, A), T = []), M.concat(R, B, T).sort(function(C, p) {
+        return C.index - p.index;
+      }).map(function(C) {
+        return {
+          data: C.data,
+          mode: C.mode,
+          length: C.length
+        };
+      });
+    }
+    function f(A, M) {
+      switch (M) {
+        case r.NUMERIC:
+          return i.getBitsLength(A);
+        case r.ALPHANUMERIC:
+          return e.getBitsLength(A);
+        case r.KANJI:
+          return n.getBitsLength(A);
+        case r.BYTE:
+          return t.getBitsLength(A);
+      }
+    }
+    function d(A) {
+      return A.reduce(function(M, R) {
+        const B = M.length - 1 >= 0 ? M[M.length - 1] : null;
+        return B && B.mode === R.mode ? (M[M.length - 1].data += R.data, M) : (M.push(R), M);
+      }, []);
+    }
+    function N(A) {
+      const M = [];
+      for (let R = 0; R < A.length; R++) {
+        const B = A[R];
+        switch (B.mode) {
+          case r.NUMERIC:
+            M.push([
+              B,
+              { data: B.data, mode: r.ALPHANUMERIC, length: B.length },
+              { data: B.data, mode: r.BYTE, length: B.length }
+            ]);
+            break;
+          case r.ALPHANUMERIC:
+            M.push([
+              B,
+              { data: B.data, mode: r.BYTE, length: B.length }
+            ]);
+            break;
+          case r.KANJI:
+            M.push([
+              B,
+              { data: B.data, mode: r.BYTE, length: c(B.data) }
+            ]);
+            break;
+          case r.BYTE:
+            M.push([
+              { data: B.data, mode: r.BYTE, length: c(B.data) }
+            ]);
+        }
+      }
+      return M;
+    }
+    function S(A, M) {
+      const R = {}, B = { start: {} };
+      let T = ["start"];
+      for (let w = 0; w < A.length; w++) {
+        const C = A[w], p = [];
+        for (let h = 0; h < C.length; h++) {
+          const I = C[h], m = "" + w + h;
+          p.push(m), R[m] = { node: I, lastCount: 0 }, B[m] = {};
+          for (let E = 0; E < T.length; E++) {
+            const y = T[E];
+            R[y] && R[y].node.mode === I.mode ? (B[y][m] = f(R[y].lastCount + I.length, I.mode) - f(R[y].lastCount, I.mode), R[y].lastCount += I.length) : (R[y] && (R[y].lastCount = I.length), B[y][m] = f(I.length, I.mode) + 4 + r.getCharCountIndicator(I.mode, M));
+          }
+        }
+        T = p;
+      }
+      for (let w = 0; w < T.length; w++)
+        B[T[w]].end = 0;
+      return { map: B, table: R };
+    }
+    function b(A, M) {
+      let R;
+      const B = r.getBestModeForData(A);
+      if (R = r.from(M, B), R !== r.BYTE && R.bit < B.bit)
+        throw new Error('"' + A + '" cannot be encoded with mode ' + r.toString(R) + `.
+ Suggested mode is: ` + r.toString(B));
+      switch (R === r.KANJI && !u.isKanjiModeEnabled() && (R = r.BYTE), R) {
+        case r.NUMERIC:
+          return new i(A);
+        case r.ALPHANUMERIC:
+          return new e(A);
+        case r.KANJI:
+          return new n(A);
+        case r.BYTE:
+          return new t(A);
+      }
+    }
+    o.fromArray = function(M) {
+      return M.reduce(function(R, B) {
+        return typeof B == "string" ? R.push(b(B, null)) : B.data && R.push(b(B.data, B.mode)), R;
+      }, []);
+    }, o.fromString = function(M, R) {
+      const B = g(M, u.isKanjiModeEnabled()), T = N(B), w = S(T, R), C = a.find_path(w.map, "start", "end"), p = [];
+      for (let h = 1; h < C.length - 1; h++)
+        p.push(w.table[C[h]].node);
+      return o.fromArray(d(p));
+    }, o.rawSplit = function(M) {
+      return o.fromArray(
+        g(M, u.isKanjiModeEnabled())
+      );
+    };
+  })(ut)), ut;
+}
+var Kt;
+function Ee() {
+  if (Kt) return Q;
+  Kt = 1;
+  const o = q(), r = yt(), i = oe(), e = ie(), t = se(), n = ae(), s = ue(), u = Qt(), a = fe(), c = de(), l = he(), g = F(), f = Ce();
+  function d(w, C) {
+    const p = w.size, h = n.getPositions(C);
+    for (let I = 0; I < h.length; I++) {
+      const m = h[I][0], E = h[I][1];
+      for (let y = -1; y <= 7; y++)
+        if (!(m + y <= -1 || p <= m + y))
+          for (let P = -1; P <= 7; P++)
+            E + P <= -1 || p <= E + P || (y >= 0 && y <= 6 && (P === 0 || P === 6) || P >= 0 && P <= 6 && (y === 0 || y === 6) || y >= 2 && y <= 4 && P >= 2 && P <= 4 ? w.set(m + y, E + P, !0, !0) : w.set(m + y, E + P, !1, !0));
+    }
+  }
+  function N(w) {
+    const C = w.size;
+    for (let p = 8; p < C - 8; p++) {
+      const h = p % 2 === 0;
+      w.set(p, 6, h, !0), w.set(6, p, h, !0);
+    }
+  }
+  function S(w, C) {
+    const p = t.getPositions(C);
+    for (let h = 0; h < p.length; h++) {
+      const I = p[h][0], m = p[h][1];
+      for (let E = -2; E <= 2; E++)
+        for (let y = -2; y <= 2; y++)
+          E === -2 || E === 2 || y === -2 || y === 2 || E === 0 && y === 0 ? w.set(I + E, m + y, !0, !0) : w.set(I + E, m + y, !1, !0);
+    }
+  }
+  function b(w, C) {
+    const p = w.size, h = c.getEncodedBits(C);
+    let I, m, E;
+    for (let y = 0; y < 18; y++)
+      I = Math.floor(y / 3), m = y % 3 + p - 8 - 3, E = (h >> y & 1) === 1, w.set(I, m, E, !0), w.set(m, I, E, !0);
+  }
+  function A(w, C, p) {
+    const h = w.size, I = l.getEncodedBits(C, p);
+    let m, E;
+    for (m = 0; m < 15; m++)
+      E = (I >> m & 1) === 1, m < 6 ? w.set(m, 8, E, !0) : m < 8 ? w.set(m + 1, 8, E, !0) : w.set(h - 15 + m, 8, E, !0), m < 8 ? w.set(8, h - m - 1, E, !0) : m < 9 ? w.set(8, 15 - m - 1 + 1, E, !0) : w.set(8, 15 - m - 1, E, !0);
+    w.set(h - 8, 8, 1, !0);
+  }
+  function M(w, C) {
+    const p = w.size;
+    let h = -1, I = p - 1, m = 7, E = 0;
+    for (let y = p - 1; y > 0; y -= 2)
+      for (y === 6 && y--; ; ) {
+        for (let P = 0; P < 2; P++)
+          if (!w.isReserved(I, y - P)) {
+            let v = !1;
+            E < C.length && (v = (C[E] >>> m & 1) === 1), w.set(I, y - P, v), m--, m === -1 && (E++, m = 7);
+          }
+        if (I += h, I < 0 || p <= I) {
+          I -= h, h = -h;
+          break;
+        }
+      }
+  }
+  function R(w, C, p) {
+    const h = new i();
+    p.forEach(function(P) {
+      h.put(P.mode.bit, 4), h.put(P.getLength(), g.getCharCountIndicator(P.mode, w)), P.write(h);
+    });
+    const I = o.getSymbolTotalCodewords(w), m = u.getTotalCodewordsCount(w, C), E = (I - m) * 8;
+    for (h.getLengthInBits() + 4 <= E && h.put(0, 4); h.getLengthInBits() % 8 !== 0; )
+      h.putBit(0);
+    const y = (E - h.getLengthInBits()) / 8;
+    for (let P = 0; P < y; P++)
+      h.put(P % 2 ? 17 : 236, 8);
+    return B(h, w, C);
+  }
+  function B(w, C, p) {
+    const h = o.getSymbolTotalCodewords(C), I = u.getTotalCodewordsCount(C, p), m = h - I, E = u.getBlocksCount(C, p), y = h % E, P = E - y, v = Math.floor(h / E), J = Math.floor(m / E), $t = J + 1, pt = v - J, te = new a(pt);
+    let K = 0;
+    const z = new Array(E), Ct = new Array(E);
+    let H = 0;
+    const ee = new Uint8Array(w.buffer);
+    for (let k = 0; k < E; k++) {
+      const x = k < P ? J : $t;
+      z[k] = ee.slice(K, K + x), Ct[k] = te.encode(z[k]), K += x, H = Math.max(H, x);
+    }
+    const Y = new Uint8Array(h);
+    let Et = 0, L, D;
+    for (L = 0; L < H; L++)
+      for (D = 0; D < E; D++)
+        L < z[D].length && (Y[Et++] = z[D][L]);
+    for (L = 0; L < pt; L++)
+      for (D = 0; D < E; D++)
+        Y[Et++] = Ct[D][L];
+    return Y;
+  }
+  function T(w, C, p, h) {
+    let I;
+    if (Array.isArray(w))
+      I = f.fromArray(w);
+    else if (typeof w == "string") {
+      let v = C;
+      if (!v) {
+        const J = f.rawSplit(w);
+        v = c.getBestVersionForData(J, p);
+      }
+      I = f.fromString(w, v || 40);
+    } else
+      throw new Error("Invalid data");
+    const m = c.getBestVersionForData(I, p);
+    if (!m)
+      throw new Error("The amount of data is too big to be stored in a QR Code");
+    if (!C)
+      C = m;
+    else if (C < m)
+      throw new Error(
+        `
+The chosen QR Code version cannot contain this amount of data.
+Minimum version required to store current data is: ` + m + `.
+`
+      );
+    const E = R(C, p, I), y = o.getSymbolSize(C), P = new e(y);
+    return d(P, C), N(P), S(P, C), A(P, p, 0), C >= 7 && b(P, C), M(P, E), isNaN(h) && (h = s.getBestMask(
+      P,
+      A.bind(null, P, p)
+    )), s.applyMask(h, P), A(P, p, h), {
+      modules: P,
+      version: C,
+      errorCorrectionLevel: p,
+      maskPattern: h,
+      segments: I
+    };
+  }
+  return Q.create = function(C, p) {
+    if (typeof C > "u" || C === "")
+      throw new Error("No input text");
+    let h = r.M, I, m;
+    return typeof p < "u" && (h = r.from(p.errorCorrectionLevel, r.M), I = c.from(p.version), m = s.from(p.maskPattern), p.toSJISFunc && o.setToSJISFunction(p.toSJISFunc)), T(C, I, h, m);
+  }, Q;
+}
+var gt = {}, wt = {}, Ht;
+function Xt() {
+  return Ht || (Ht = 1, (function(o) {
+    function r(i) {
+      if (typeof i == "number" && (i = i.toString()), typeof i != "string")
+        throw new Error("Color should be defined as hex string");
+      let e = i.slice().replace("#", "").split("");
+      if (e.length < 3 || e.length === 5 || e.length > 8)
+        throw new Error("Invalid hex color: " + i);
+      (e.length === 3 || e.length === 4) && (e = Array.prototype.concat.apply([], e.map(function(n) {
+        return [n, n];
+      }))), e.length === 6 && e.push("F", "F");
+      const t = parseInt(e.join(""), 16);
+      return {
+        r: t >> 24 & 255,
+        g: t >> 16 & 255,
+        b: t >> 8 & 255,
+        a: t & 255,
+        hex: "#" + e.slice(0, 6).join("")
+      };
+    }
+    o.getOptions = function(e) {
+      e || (e = {}), e.color || (e.color = {});
+      const t = typeof e.margin > "u" || e.margin === null || e.margin < 0 ? 4 : e.margin, n = e.width && e.width >= 21 ? e.width : void 0, s = e.scale || 4;
+      return {
+        width: n,
+        scale: n ? 4 : s,
+        margin: t,
+        color: {
+          dark: r(e.color.dark || "#000000ff"),
+          light: r(e.color.light || "#ffffffff")
+        },
+        type: e.type,
+        rendererOpts: e.rendererOpts || {}
+      };
+    }, o.getScale = function(e, t) {
+      return t.width && t.width >= e + t.margin * 2 ? t.width / (e + t.margin * 2) : t.scale;
+    }, o.getImageWidth = function(e, t) {
+      const n = o.getScale(e, t);
+      return Math.floor((e + t.margin * 2) * n);
+    }, o.qrToImageData = function(e, t, n) {
+      const s = t.modules.size, u = t.modules.data, a = o.getScale(s, n), c = Math.floor((s + n.margin * 2) * a), l = n.margin * a, g = [n.color.light, n.color.dark];
+      for (let f = 0; f < c; f++)
+        for (let d = 0; d < c; d++) {
+          let N = (f * c + d) * 4, S = n.color.light;
+          if (f >= l && d >= l && f < c - l && d < c - l) {
+            const b = Math.floor((f - l) / a), A = Math.floor((d - l) / a);
+            S = g[u[b * s + A] ? 1 : 0];
+          }
+          e[N++] = S.r, e[N++] = S.g, e[N++] = S.b, e[N] = S.a;
+        }
+    };
+  })(wt)), wt;
+}
+var Yt;
+function Be() {
+  return Yt || (Yt = 1, (function(o) {
+    const r = Xt();
+    function i(t, n, s) {
+      t.clearRect(0, 0, n.width, n.height), n.style || (n.style = {}), n.height = s, n.width = s, n.style.height = s + "px", n.style.width = s + "px";
+    }
+    function e() {
+      try {
+        return document.createElement("canvas");
+      } catch {
+        throw new Error("You need to specify a canvas element");
+      }
+    }
+    o.render = function(n, s, u) {
+      let a = u, c = s;
+      typeof a > "u" && (!s || !s.getContext) && (a = s, s = void 0), s || (c = e()), a = r.getOptions(a);
+      const l = r.getImageWidth(n.modules.size, a), g = c.getContext("2d"), f = g.createImageData(l, l);
+      return r.qrToImageData(f.data, n, a), i(g, c, l), g.putImageData(f, 0, 0), c;
+    }, o.renderToDataURL = function(n, s, u) {
+      let a = u;
+      typeof a > "u" && (!s || !s.getContext) && (a = s, s = void 0), a || (a = {});
+      const c = o.render(n, s, a), l = a.type || "image/png", g = a.rendererOpts || {};
+      return c.toDataURL(l, g.quality);
+    };
+  })(gt)), gt;
+}
+var mt = {}, xt;
+function Ie() {
+  if (xt) return mt;
+  xt = 1;
+  const o = Xt();
+  function r(t, n) {
+    const s = t.a / 255, u = n + '="' + t.hex + '"';
+    return s < 1 ? u + " " + n + '-opacity="' + s.toFixed(2).slice(1) + '"' : u;
+  }
+  function i(t, n, s) {
+    let u = t + n;
+    return typeof s < "u" && (u += " " + s), u;
+  }
+  function e(t, n, s) {
+    let u = "", a = 0, c = !1, l = 0;
+    for (let g = 0; g < t.length; g++) {
+      const f = Math.floor(g % n), d = Math.floor(g / n);
+      !f && !c && (c = !0), t[g] ? (l++, g > 0 && f > 0 && t[g - 1] || (u += c ? i("M", f + s, 0.5 + d + s) : i("m", a, 0), a = 0, c = !1), f + 1 < n && t[g + 1] || (u += i("h", l), l = 0)) : a++;
+    }
+    return u;
+  }
+  return mt.render = function(n, s, u) {
+    const a = o.getOptions(s), c = n.modules.size, l = n.modules.data, g = c + a.margin * 2, f = a.color.light.a ? "<path " + r(a.color.light, "fill") + ' d="M0 0h' + g + "v" + g + 'H0z"/>' : "", d = "<path " + r(a.color.dark, "stroke") + ' d="' + e(l, c, a.margin) + '"/>', N = 'viewBox="0 0 ' + g + " " + g + '"', b = '<svg xmlns="http://www.w3.org/2000/svg" ' + (a.width ? 'width="' + a.width + '" height="' + a.width + '" ' : "") + N + ' shape-rendering="crispEdges">' + f + d + `</svg>
+`;
+    return typeof u == "function" && u(null, b), b;
+  }, mt;
+}
+var Gt;
+function Ae() {
+  if (Gt) return O;
+  Gt = 1;
+  const o = re(), r = Ee(), i = Be(), e = Ie();
+  function t(n, s, u, a, c) {
+    const l = [].slice.call(arguments, 1), g = l.length, f = typeof l[g - 1] == "function";
+    if (!f && !o())
+      throw new Error("Callback required as last argument");
+    if (f) {
+      if (g < 2)
+        throw new Error("Too few arguments provided");
+      g === 2 ? (c = u, u = s, s = a = void 0) : g === 3 && (s.getContext && typeof c > "u" ? (c = a, a = void 0) : (c = a, a = u, u = s, s = void 0));
+    } else {
+      if (g < 1)
+        throw new Error("Too few arguments provided");
+      return g === 1 ? (u = s, s = a = void 0) : g === 2 && !s.getContext && (a = u, u = s, s = void 0), new Promise(function(d, N) {
+        try {
+          const S = r.create(u, a);
+          d(n(S, s, a));
+        } catch (S) {
+          N(S);
+        }
+      });
+    }
+    try {
+      const d = r.create(u, a);
+      c(null, n(d, s, a));
+    } catch (d) {
+      c(d);
+    }
+  }
+  return O.create = r.create, O.toCanvas = t.bind(null, i.render), O.toDataURL = t.bind(null, i.renderToDataURL), O.toString = t.bind(null, function(n, s, u) {
+    return e.render(n, u);
+  }), O;
+}
+var Re = Ae();
+const Pe = /* @__PURE__ */ ne(Re);
+class Se {
+  constructor(r, i) {
+    this._playerConnections = /* @__PURE__ */ new Map(), this._playerChannels = /* @__PURE__ */ new Map(), this._invitationAccepted = /* @__PURE__ */ new Map(), this._onPlayerEvent = null, this._onPlayerEvent = i, this._gamepadUiUrl = r;
+    const e = new BroadcastChannel("touch-coop-signaling");
+    e.onmessage = async (t) => {
+      const n = t.data;
+      if (n && n.type === "answer" && n.playerId && n.base64Answer)
+        try {
+          const s = this._playerConnections.get(n.playerId);
+          if (!s)
+            throw new Error(`No peer connection for player: ${n.playerId}`);
+          const u = JSON.parse(atob(n.base64Answer));
+          await s.setRemoteDescription(u.sdp), this._invitationAccepted.set(n.playerId, !0);
+        } catch {
+        }
+    };
+  }
+  _UUIID() {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (r) => {
+      const i = Math.random() * 16 | 0;
+      return (r === "x" ? i : i & 3 | 8).toString(16);
+    });
+  }
+  async requestNewPlayerToJoin() {
+    return new Promise(
+      (r, i) => {
+        (async () => {
+          const e = this._UUIID(), t = new RTCPeerConnection(), n = t.createDataChannel("player");
+          this._playerConnections.set(e, t), this._playerChannels.set(e, n), this._invitationAccepted.set(e, !1), n.onmessage = (g) => {
+            if (this._onPlayerEvent) {
+              let f = g.data;
+              f = JSON.parse(g.data), this._onPlayerEvent(f);
+            }
+          };
+          const s = await t.createOffer();
+          await t.setLocalDescription(s), await new Promise((g) => {
+            t.onicecandidate = (f) => {
+              f.candidate || g(void 0);
+            };
+          });
+          const u = {
+            playerId: e,
+            sdp: t.localDescription
+          }, a = JSON.stringify(u), c = btoa(a), l = `${this._gamepadUiUrl}?remoteSDP=${c}`;
+          Pe.toDataURL(
+            l,
+            { errorCorrectionLevel: "L" },
+            (g, f) => {
+              if (g)
+                return i(g);
+              r({
+                dataUrl: f,
+                shareURL: l,
+                playerId: e
+              });
+            }
+          );
+        })();
+      }
+    );
+  }
+  // Returns true if invitation was accepted, false if still pending, undefined if not found
+  getInvitationStatus(r) {
+    return this._invitationAccepted.get(r);
+  }
+  async acceptPlayerAnswer(r, i) {
+  }
+}
+export {
+  Se as Match,
+  Ne as Player
+};
