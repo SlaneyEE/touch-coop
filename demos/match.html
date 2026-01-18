@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Touch Coop Game Demo</title>
+    <style>
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #ccc; padding: 16px; text-align: center; width: 25%; }
+      button { padding: 8px 16px; font-size: 16px; }
+      img.qr { width: 100%; }
+      textarea { width: 100%; resize: vertical; height: 50vh; }
+    </style>
+  </head>
+  <body>
+    <h1>Touch Coop Game Demo</h1>
+    <table id="players-table">
+      <tr>
+        <th>Player 1</th>
+        <th>Player 2</th>
+        <th>Player 3</th>
+        <th>Player 4</th>
+      </tr>
+      <tr>
+        <td id="cell-0">
+          <div id="player-id-0" style="min-height:1.5em;"></div>
+          <div id="qr-0"><button onclick="joinPlayer(0)">Join</button></div>
+          <div id="area-0" style="display:none; margin-top:12px;">
+            <label for="messages-0">Player 1 Messages:</label><br />
+            <textarea id="messages-0" rows="6" cols="30" readonly style="resize:vertical;"></textarea>
+          </div>
+        </td>
+        <td id="cell-1">
+          <div id="player-id-1" style="min-height:1.5em;"></div>
+          <div id="qr-1"><button onclick="joinPlayer(1)">Join</button></div>
+          <div id="area-1" style="display:none; margin-top:12px;">
+            <label for="messages-1">Player 2 Messages:</label><br />
+            <textarea id="messages-1" rows="6" cols="30" readonly style="resize:vertical;"></textarea>
+          </div>
+        </td>
+        <td id="cell-2">
+          <div id="player-id-2" style="min-height:1.5em;"></div>
+          <div id="qr-2"><button onclick="joinPlayer(2)">Join</button></div>
+          <div id="area-2" style="display:none; margin-top:12px;">
+            <label for="messages-2">Player 3 Messages:</label><br />
+            <textarea id="messages-2" rows="6" cols="30" readonly style="resize:vertical;"></textarea>
+          </div>
+        </td>
+        <td id="cell-3">
+          <div id="player-id-3" style="min-height:1.5em;"></div>
+          <div id="qr-3"><button onclick="joinPlayer(3)">Join</button></div>
+          <div id="area-3" style="display:none; margin-top:12px;">
+            <label for="messages-3">Player 4 Messages:</label><br />
+            <textarea id="messages-3" rows="6" cols="30" readonly style="resize:vertical;"></textarea>
+          </div>
+        </td>
+      </tr>
+    </table>
+    <script src="../dist/index.global.js"></script>
+    <script>
+
+      function updatePlayerIdDisplay(idx, playerId) {
+        const playerIdDiv = document.getElementById(`player-id-${idx}`);
+        if (playerId) {
+          playerIdDiv.textContent = `Player ID: ${playerId}`;
+        } else {
+          playerIdDiv.textContent = '';
+        }
+      }
+
+      function handlePlayerEvent(event) {
+        // Find the player slot idx
+        let idx = -1;
+        for (let i = 0; i < 4; i++) {
+          const div = document.getElementById(`qr-${i}`);
+          if (div.dataset.playerId === event.playerId) {
+            idx = i;
+            break;
+          }
+        }
+        // If not found and this is a JOIN, assign to first available
+        if (idx === -1 && event.action === "JOIN") {
+          for (let i = 0; i < 4; i++) {
+            const div = document.getElementById(`qr-${i}`);
+            if (!div.dataset.playerId) {
+              div.dataset.playerId = event.playerId;
+              idx = i;
+              break;
+            }
+          }
+        }
+        if (idx === -1) return;
+        const qrDiv = document.getElementById(`qr-${idx}`);
+        const areaDiv = document.getElementById(`area-${idx}`);
+        const area = document.getElementById(`messages-${idx}`);
+        switch (event.action) {
+          case "JOIN": {
+            qrDiv.dataset.playerId = event.playerId;
+            const joinBtn = qrDiv.querySelector('button');
+            if (joinBtn) joinBtn.style.display = 'none';
+            const qrImg = qrDiv.querySelector('img.qr');
+            if (qrImg) qrImg.remove();
+            areaDiv.style.display = '';
+            area.value += 'Player joined!\n';
+            updatePlayerIdDisplay(idx, event.playerId);
+            break;
+          }
+          case "LEAVE": {
+            const joinBtn2 = qrDiv.querySelector('button');
+            if (joinBtn2) joinBtn2.style.display = '';
+            areaDiv.style.display = 'none';
+            area.value += 'Player left!\n';
+            updatePlayerIdDisplay(idx, '');
+            delete qrDiv.dataset.playerId;
+            qrDiv.innerHTML = '<button onclick="joinPlayer(' + idx + ')">Join</button>';
+            break;
+          }
+          case "MOVE":
+            area.value += `Player ${event.playerId} pressed ${event.button}\n`;
+            break;
+          default:
+            area.value += JSON.stringify(event) + '\n';
+            break;
+        }
+        area.scrollTop = area.scrollHeight;
+      }
+
+      const match = new TouchCoop.Match(
+        "http://localhost:8080/demos/gamepad",
+        handlePlayerEvent
+      );
+
+      window.joinPlayer = async function(idx) {
+        const qrDiv = document.getElementById(`qr-${idx}`);
+        const playerIdDiv = document.getElementById(`player-id-${idx}`);
+        qrDiv.innerHTML = 'Loading...';
+        playerIdDiv.textContent = '';
+        try {
+          const { dataUrl, playerId, shareURL } = await match.requestNewPlayerToJoin();
+          qrDiv.dataset.playerId = playerId || '';
+          qrDiv.innerHTML = `
+            <img class='qr' src='${dataUrl}' alt='QR Code' /></br>
+            <a href='${shareURL}' target='_blank'>Connect</a>
+          `;
+          updatePlayerIdDisplay(idx, playerId);
+        } catch (err) {
+          qrDiv.innerHTML = `<span style='color:red;'>Error</span>`;
+        }
+      };
+    </script>
+  </body>
+</html>
