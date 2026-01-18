@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { compressOfferData } from "./encoding";
 
 export interface BasePlayerEvent {
   playerId: string;
@@ -21,7 +22,7 @@ type OnPlayerEventHandler = (data: PlayerEvent) => void;
 export class Match {
   private _playerConnections: Map<string, RTCPeerConnection> = new Map();
   private _playerChannels: Map<string, RTCDataChannel> = new Map();
-  private _invitationAccepted: Map<string, boolean> = new Map(); // playerId -> accepted
+  private _invitationAccepted: Map<string, boolean> = new Map();
   private _onPlayerEvent: OnPlayerEventHandler | null = null;
   private _gamepadUiUrl: string;
   constructor(gamepadUiUrl: string, onPlayerEvent: OnPlayerEventHandler) {
@@ -57,16 +58,15 @@ export class Match {
     });
   }
   async requestNewPlayerToJoin() {
-    return new Promise<{ dataUrl: string; playerId: string, shareURL: string }>(
+    return new Promise<{ dataUrl: string; playerId: string; shareURL: string }>(
       (resolve, reject) => {
         (async () => {
           const newPlayer = this._UUIID();
           const pc = new RTCPeerConnection();
           const dataChannel = pc.createDataChannel("player");
-          // Store connection and channel
           this._playerConnections.set(newPlayer, pc);
           this._playerChannels.set(newPlayer, dataChannel);
-          this._invitationAccepted.set(newPlayer, false); // Mark as pending
+          this._invitationAccepted.set(newPlayer, false);
           dataChannel.onmessage = (msg) => {
             if (this._onPlayerEvent) {
               let eventData = msg.data;
@@ -88,11 +88,12 @@ export class Match {
             sdp: pc.localDescription,
           };
           const offerJSON = JSON.stringify(offerObject);
-          const base64OfferObject = btoa(offerJSON);
-          const shareURL = `${this._gamepadUiUrl}?remoteSDP=${base64OfferObject}`;
+          const compressedBase64OfferObject =
+            await compressOfferData(offerJSON);
+          const shareURL = `${this._gamepadUiUrl}?remoteSDP=${compressedBase64OfferObject}`;
           QRCode.toDataURL(
             shareURL,
-            { errorCorrectionLevel: "L" },
+            { errorCorrectionLevel: "M" },
             (err, dataUrl) => {
               if (err) {
                 return reject(err);

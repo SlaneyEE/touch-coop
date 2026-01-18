@@ -1,3 +1,4 @@
+import { decompressOfferData } from "./encoding";
 import type { PlayerEvent } from "./match";
 
 export class Player {
@@ -43,7 +44,8 @@ export class Player {
     if (!remoteBase64) {
       throw new Error("No remoteSDP found in URL parameters.");
     }
-    const remoteObject = JSON.parse(atob(remoteBase64));
+    const decodedURL = await decompressOfferData(remoteBase64);
+    const remoteObject = JSON.parse(decodedURL);
     this._playerId = remoteObject.playerId;
     const remoteSDP = remoteObject.sdp;
     await this._pc.setRemoteDescription(remoteSDP);
