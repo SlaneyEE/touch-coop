@@ -117,7 +117,7 @@ export default function GamePad() {
 
 ## Live Demo
 
-You can try a live demo of TouchCoop at [https://SlaneyEE.github.io/demos/match.html](https://SlaneyEE.github.io/demos/match.html).
+You can try a live demo of TouchCoop at [https://SlaneyEE.github.io/touch-coop/demos/match.html](https://SlaneyEE.github.io/touch-coop/demos/match.html).
 
 The demo contains a simple game where players can join by scaning a QR Code and use their mobile devices as controllers. Each player can use the on-screen buttons to send input events to the game.
 
