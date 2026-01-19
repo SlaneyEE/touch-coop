@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 
 export interface BasePlayerEvent {
   playerId: string;
+  playerName: string;
   timestamp: number;
 }
 
@@ -24,6 +25,7 @@ export class Match {
   private _playerConnections: Map<string, DataConnection> = new Map();
   private _invitationAccepted: Map<string, boolean> = new Map();
   private _connectionToPlayerId: Map<DataConnection, string> = new Map();
+  private _playerNames: Map<string, string> = new Map();
   private _onPlayerEvent: OnPlayerEventHandler | null = null;
   private _gamepadUiUrl: string;
 
@@ -85,7 +87,11 @@ export class Match {
               this._playerConnections.set(eventData.playerId, conn);
               this._invitationAccepted.set(eventData.playerId, true);
               this._connectionToPlayerId.set(conn, eventData.playerId);
-              console.log(`Player ${eventData.playerId} joined`);
+              this._playerNames.set(eventData.playerId, eventData.playerName);
+            }
+            if (eventData.action === "MOVE") {
+              eventData.playerName =
+                this._playerNames.get(eventData.playerId) || "";
             }
             this._onPlayerEvent(eventData);
           } else {
@@ -100,10 +106,13 @@ export class Match {
           this._playerConnections.delete(playerId);
           this._invitationAccepted.delete(playerId);
           this._connectionToPlayerId.delete(conn);
+          const playerName = this._playerNames.get(playerId) || "";
+          this._playerNames.delete(playerId);
           if (this._onPlayerEvent) {
             this._onPlayerEvent({
               playerId,
               action: "LEAVE",
+              playerName,
               timestamp: Date.now(),
             });
           }
@@ -122,6 +131,7 @@ export class Match {
           this._playerConnections.delete(playerId);
           this._invitationAccepted.delete(playerId);
           this._connectionToPlayerId.delete(conn);
+          this._playerNames.delete(playerId);
         } else {
           console.error(
             `Connection error for unknown player (PeerJS ID: ${conn.peer}):`,
@@ -136,7 +146,7 @@ export class Match {
     });
   }
 
-  async requestNewPlayerToJoin(): Promise<{
+  async createLobby(): Promise<{
     dataUrl: string;
     shareURL: string;
   }> {
@@ -178,6 +188,7 @@ export class Match {
     this._playerConnections.clear();
     this._invitationAccepted.clear();
     this._connectionToPlayerId.clear();
+    this._playerNames.clear();
     this._peer.destroy();
   }
 }

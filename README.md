@@ -43,12 +43,13 @@ npm install touch-coop
 
 The library expects your game to use the `Match` and `Player` classes. Your game will require a minimum of two pages with unique URLs:
 
-### 1. Match URL
+### 1. Match (Shared TV/Monitor)
 
-The main game page hosts the game and creates a `Match` instance. This page uses `requestNewPlayerToJoin()` to generate a QR code for each player to join the game.
+The main game page hosts the game and creates a `Match` instance. This page uses `createLobby()` to generate a QR code that players can scan to join the game.
 
 ```ts
 import { Match, PlayerEvent } from "touch-coop";
+import { useCallback, useState } from "react";
 
 const gamePadURL = "http://localhost:8080/demos/gamepad";
 
@@ -56,30 +57,51 @@ function handlePlayerEvent(event: PlayerEvent) {
     switch (event.action) {
         case "JOIN":
             console.log(
-                `Player ${event.playerId} joined the game.`
+                `Player ${event.playerId} ${event.playerName} joined the game.`
             );
             break;
         case "LEAVE":
             console.log(
-                `Player ${event.playerId} left the game.`
+                `Player ${event.playerId} ${event.playerName} left the game.`
             );
             break;
         case "MOVE":
             console.log(
-                `Player ${event.playerId} pressed ${event.button}`
+                `Player ${event.playerId} ${event.playerName} pressed ${event.button}`
             );
             break;
         }
 }
 
+export function Lobby() {
+    const [dataUrl, setDataUrl] = React.useState<string | null>(null);
+    const createLobby = useCallback(() => {
+        (async () => {
+            const match = new Match(
+                gamePadURL,
+                handlePlayerEvent
+            );
+            const { dataUrl } = await match.createLobby();
+            setDataUrl(dataUrl);
+        })();
+    }, []);
 
-const match = new Match(
-    gamePadURL,
-    handlePlayerEvent
-);
+    return dataUrl === null ? (
+        <div>
+            <button onClick={createLobby}>
+                Create Lobby
+            </button>
+        </div>
+    ) :(
+        <div>
+            <p>Scan the QR code below to join the game:</p>
+            <img src={dataUrl} alt="GamePad QR Code" />
+        </div>
+    );
+}
 ```
 
-### 2. GamePad URL
+### 2. Virtual Controller (Mobile device)
 
 Each player scans a QR code to join the game. The QR code contains a unique URL that opens a web page with touch controls. This page uses the `Player` class to connect to the game match with `player.joinMatch()` and send input events with `player.sendMove("X")`.
 
@@ -94,9 +116,10 @@ export default function GamePad() {
 
     React.useEffect(() => {
         (async () => {
-        await player.joinMatch();
-            setLoading(false);
-        })();
+            const playerName = prompt("Enter your player name:");
+            await player.joinMatch(playerName);
+                setLoading(false);
+            })();
     }, []);
 
     if (loading) {
@@ -137,8 +160,6 @@ export default function GamePad() {
 ## Live Demo
 
 You can try a live demo of TouchCoop at [https://SlaneyEE.github.io/touch-coop/demos/match.html](https://SlaneyEE.github.io/touch-coop/demos/match.html).
-
-![](https://raw.githubusercontent.com/SlaneyEE/touch-coop/main/media/demo.png)
 
 The demo contains a simple game where players can join by scaning a QR Code and use their mobile devices as controllers. Each player can use the on-screen buttons to send input events to the game.
 

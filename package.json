@@ -1,6 +1,6 @@
 {
   "name": "touch-coop",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "description": "Allow players to play couch co-op in your game using their mobile devices as controllers.",
   "keywords": [
     "couch-coop",

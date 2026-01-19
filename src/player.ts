@@ -6,6 +6,7 @@ export class Player {
   private _playerId: string | null = null;
   private _dataConnection: DataConnection | null = null;
   private _ownIdPromise: Promise<string>;
+  private _playerName: string | null = null;
 
   constructor(peerConfig?: PeerOptions) {
     this._peer = peerConfig ? new Peer(peerConfig) : new Peer();
@@ -35,6 +36,7 @@ export class Player {
         const leaveEvent: PlayerEvent = {
           playerId: this._playerId,
           action: "LEAVE",
+          playerName: this._playerName || "",
           timestamp: Date.now(),
         };
         try {
@@ -48,7 +50,8 @@ export class Player {
     });
   }
 
-  async joinMatch() {
+  async joinMatch(playerName: string): Promise<void> {
+    this._playerName = playerName;
     const params = new URLSearchParams(window.location.search);
     const hostPeerId = params.get("hostPeerId");
     if (!hostPeerId) {
@@ -73,6 +76,7 @@ export class Player {
           const joinEvent: PlayerEvent = {
             playerId: this._playerId,
             action: "JOIN",
+            playerName: this._playerName || "",
             timestamp: Date.now(),
           };
           conn.send(joinEvent);
@@ -84,6 +88,7 @@ export class Player {
               const joinEvent: PlayerEvent = {
                 playerId,
                 action: "JOIN",
+                playerName: this._playerName || "",
                 timestamp: Date.now(),
               };
               conn.send(joinEvent);
@@ -112,12 +117,15 @@ export class Player {
 
   async sendMove(button: string) {
     if (this._dataConnection?.open) {
-      if (this._playerId === null) {
-        throw new Error("Player ID is not set. Cannot send data.");
+      if (this._playerId === null || this._playerName === null) {
+        throw new Error(
+          "Player ID or Player Name is not set. Cannot send data.",
+        );
       }
       const playerEvent: PlayerEvent = {
         playerId: this._playerId,
         action: "MOVE",
+        playerName: this._playerName,
         button: button,
         timestamp: Date.now(),
       };
