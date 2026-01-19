@@ -23,13 +23,15 @@ TouchCoop is powered by [PeerJS](https://peerjs.com/), which provides a simple A
 
 ```ts
 // Example: Using a custom PeerJS server
+import { Match, Player } from "touch-coop";
 const customPeerConfig = {
-  host: 'your-peerjs-server.com',
-  port: 9000,
-  path: '/peerjs'
+    host: 'your-peerjs-server.com',
+    port: 9000,
+    path: '/peerjs'
 };
 
-const match = new Match(gamePadURL, handlePlayerEvent, customPeerConfig);
+const match = new Match();
+await match.createLobby(gamePadURL, handlePlayerEvent, customPeerConfig);
 const player = new Player(customPeerConfig);
 ```
 
@@ -48,54 +50,56 @@ The library expects your game to use the `Match` and `Player` classes. Your game
 The main game page hosts the game and creates a `Match` instance. This page uses `createLobby()` to generate a QR code that players can scan to join the game.
 
 ```ts
-import { Match, PlayerEvent } from "touch-coop";
-import { useCallback, useState } from "react";
+import { Match, type PlayerEvent } from "touch-coop";
+
+// PlayerEvent type:
+// type PlayerEvent =
+//   | { action: "JOIN" | "LEAVE"; playerId: string; playerName: string; timestamp: number; }
+//   | { action: "MOVE"; playerId: string; playerName: string; button: string; timestamp: number; }
 
 const gamePadURL = "http://localhost:8080/demos/gamepad";
 
 function handlePlayerEvent(event: PlayerEvent) {
     switch (event.action) {
         case "JOIN":
-            console.log(
-                `Player ${event.playerId} ${event.playerName} joined the game.`
-            );
+            console.log(`Player ${event.playerId} ${event.playerName} joined the game.`);
             break;
         case "LEAVE":
-            console.log(
-                `Player ${event.playerId} ${event.playerName} left the game.`
-            );
+            console.log(`Player ${event.playerId} ${event.playerName} left the game.`);
             break;
         case "MOVE":
-            console.log(
-                `Player ${event.playerId} ${event.playerName} pressed ${event.button}`
-            );
+            console.log(`Player ${event.playerId} ${event.playerName} pressed ${event.button}`);
             break;
-        }
+    }
 }
 
 export function Lobby() {
-    const [dataUrl, setDataUrl] = React.useState<string | null>(null);
-    const createLobby = useCallback(() => {
-        (async () => {
-            const match = new Match(
-                gamePadURL,
-                handlePlayerEvent
-            );
-            const { dataUrl } = await match.createLobby();
-            setDataUrl(dataUrl);
-        })();
-    }, []);
+    const [lobby, setLobby] = React.useState<{
+        dataUrl: string;
+        shareURL: string;
+    } | null>(null);
 
-    return dataUrl === null ? (
+    React.useEffect(() => {
+        (async () => {
+            if (lobby === null) {
+                const match = new Match();
+                const { dataUrl, shareURL } = await match.createLobby(
+                    gamePadURL, handlePlayerEvent
+                );
+                setLobby({ dataUrl, shareURL });
+            }
+        })();
+    }, [lobby]);
+
+    return lobby === null ? (
         <div>
-            <button onClick={createLobby}>
-                Create Lobby
-            </button>
+            <button onClick={() => setLobby(null)}>Create Lobby</button>
         </div>
-    ) :(
+    ) : (
         <div>
             <p>Scan the QR code below to join the game:</p>
-            <img src={dataUrl} alt="GamePad QR Code" />
+            <img src={lobby.dataUrl} alt="GamePad QR Code" />
+            <a href={lobby.shareURL} target="_blank" rel="noopener noreferrer">Join</a>
         </div>
     );
 }
@@ -115,54 +119,82 @@ export default function GamePad() {
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
-        (async () => {
-            const playerName = prompt("Enter your player name:");
-            await player.joinMatch(playerName);
-                setLoading(false);
-            })();
-    }, []);
+        ```ts
+        import React from "react";
+        import { Player } from "touch-coop";
 
-    if (loading) {
-        return <div>Loading…</div>;
-    }
+        const player = new Player();
 
-    return (
-        <div>
-            <button onClick={() => player.sendMove("up")}>
-                Up
-            </button>
-            <button onClick={() => player.sendMove("down")}>
-                Down
-            </button>
-            <button onClick={() => player.sendMove("left")}>
-                Left
-            </button>
-            <button onClick={() => player.sendMove("right")}>
-                Right
-            </button>
-            <button onClick={() => player.sendMove("A")}>
-                A
-            </button>
-            <button onClick={() => player.sendMove("B")}>
-                B
-            </button>
-            <button onClick={() => player.sendMove("X")}>
-                X
-            </button>
-            <button onClick={() => player.sendMove("Y")}>
-                Y
-            </button>
-        </div>
-    );
-}
-```
+        export default function GamePad() {
+            const [loading, setLoading] = React.useState(true);
 
-## Live Demo
+            React.useEffect(() => {
+                (async () => {
+                    const playerName = prompt("Enter your player name:") || "Player";
+                    await player.joinMatch(playerName);
+                    setLoading(false);
+                })();
+            }, []);
+
+            if (loading) {
+                return <div>Loading…</div>;
+            }
+
+            return (
+                <div>
+                    <button onClick={() => player.sendMove("up")}>Up</button>
+                    <button onClick={() => player.sendMove("down")}>Down</button>
+                    <button onClick={() => player.sendMove("left")}>Left</button>
+                    <button onClick={() => player.sendMove("right")}>Right</button>
+                    <button onClick={() => player.sendMove("A")}>A</button>
+                    <button onClick={() => player.sendMove("B")}>B</button>
+                    <button onClick={() => player.sendMove("X")}>X</button>
+                    <button onClick={() => player.sendMove("Y")}>Y</button>
+                </div>
+            );
+        }
+        ```
 
 You can try a live demo of TouchCoop at [https://SlaneyEE.github.io/touch-coop/demos/match.html](https://SlaneyEE.github.io/touch-coop/demos/match.html).
 
-The demo contains a simple game where players can join by scaning a QR Code and use their mobile devices as controllers. Each player can use the on-screen buttons to send input events to the game.
+The demo contains a simple game where players can join by scanning a QR Code and use their mobile devices as controllers. Each player can use the on-screen buttons to send input events to the game.
 
 The game page is [./demos/match.html](./demos/match.html). The QR code redirects players to [./demos/gamepad/index.html](./demos/gamepad/index.html).
 
 You need to run a local server to host the demo files. You can use a simple HTTP server like `http-server` or `live-server` to serve the files from the `root` directory and then access `http://localhost:8080/demos/match.html` in your browser.
+
+---
+
+### Match PUBLIC API (v3)
+
+#### PlayerEvent type
+
+```ts
+type PlayerEvent =
+    | { action: "JOIN" | "LEAVE"; playerId: string; playerName: string; timestamp: number; }
+    | { action: "MOVE"; playerId: string; playerName: string; button: string; timestamp: number; };
+```
+
+#### Match constructor
+
+```ts
+new Match(gamepadUiUrl: string, onPlayerEvent: (event: PlayerEvent) => void)
+```
+
+#### createLobby
+
+```ts
+async createLobby(peerConfig?: Peer.PeerOptions): Promise<{ dataUrl: string; shareURL: string; }>
+```
+
+#### getInvitationStatus
+
+```ts
+getInvitationStatus(playerId: string): boolean | undefined
+```
+
+#### destroy
+
+```ts
+destroy(): void
+```

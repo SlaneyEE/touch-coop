@@ -22,21 +22,7 @@
     <div id="players-container"></div>
     <script src="../dist/index.global.js"></script>
     <script>
-      const players = {}; // playerId -> { div, textarea }
-
-      function createLobby() {
-        const lobbyDiv = document.getElementById('lobby-qr');
-        lobbyDiv.style.display = 'block';
-        lobbyDiv.innerHTML = 'Loading...';
-        match.createLobby().then(({ dataUrl, shareURL }) => {
-          lobbyDiv.innerHTML = `
-            <img class='qr' src='${dataUrl}' alt='QR Code' /><br>
-            <a href='${shareURL}' target='_blank' style='color: white;'>Connect</a>
-          `;
-        }).catch(err => {
-          lobbyDiv.innerHTML = `<span style='color:red;'>Error: ${err.message}</span>`;
-        });
-      }
+      const players = {};
 
       function handlePlayerEvent(event) {
         const playerId = event.playerId;
@@ -90,10 +76,23 @@
         }
       }
 
-      const match = new TouchCoop.Match(
-        "http://localhost:8080/demos/gamepad",
-        handlePlayerEvent
-      );
+      function createLobby() {
+        const match = new TouchCoop.Match();
+        const lobbyDiv = document.getElementById('lobby-qr');
+        lobbyDiv.style.display = 'block';
+        lobbyDiv.innerHTML = 'Loading...';
+        match.createLobby(
+          "http://localhost:8080/demos/gamepad",
+          handlePlayerEvent
+        ).then(({ dataUrl, shareURL }) => {
+          lobbyDiv.innerHTML = `
+            <img class='qr' src='${dataUrl}' alt='QR Code' /><br>
+            <a href='${shareURL}' target='_blank' style='color: white;'>Connect</a>
+          `;
+        }).catch(err => {
+          lobbyDiv.innerHTML = `<span style='color:red;'>Error: ${err.message}</span>`;
+        });
+      }
     </script>
   </body>
 </html>
