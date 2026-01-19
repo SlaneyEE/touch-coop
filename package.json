@@ -1,6 +1,6 @@
 {
   "name": "touch-coop",
-  "version": "4.0.2",
+  "version": "4.0.3",
   "license": "MIT",
   "description": "Allow players to play couch co-op in your game using their mobile devices as controllers.",
   "keywords": [
