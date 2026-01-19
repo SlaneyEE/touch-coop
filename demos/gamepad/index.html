@@ -43,7 +43,10 @@
 		document.getElementById("joinBtn").onclick = async () => {
 			document.getElementById("joinBtn").style.display = "none";
 			document.getElementById("gamepad").style.display = "block";
-			await player.joinMatch();
+			let playerName = prompt("Enter your player name:");
+			if (!playerName || !playerName.trim()) playerName = "Player";
+			playerName = playerName.trim();
+			await player.joinMatch(playerName);
 			function sendButtonEvent(btn) {
 				player.sendMove(btn);
 			}

@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -7,145 +6,94 @@
     <title>Touch Coop Demo</title>
     <style>
       body { background-color: black; color: white; }
-      table { border-collapse: collapse; width: 100%; }
-      th, td { border: 1px solid #ccc; padding: 16px; text-align: center; width: 25%; }
-      button { padding: 8px 16px; font-size: 16px; }
-      img.qr { width: 100%; }
-      textarea { width: 100%; resize: vertical; height: 50vh; }
+      img.qr { width: 100%; max-width: 300px; }
+      textarea { width: 100%; resize: vertical; height: 30vh; }
+      #players-container { display: flex; flex-wrap: wrap; justify-content: center; }
+      .player-column { flex: 1; min-width: 250px; margin: 10px; padding: 10px; border: 1px solid #ccc; background-color: #222; }
     </style>
   </head>
   <body>
     <image src="https://github.com/SlaneyEE/touch-coop/raw/main/media/logo.png" alt="Touch Coop Logo" style="width:200px; display:block; margin:auto; margin-top: 2rem;" />
     <h1>TouchCoop Demo</h1>
-    <table id="players-table">
-      <tr>
-        <th>Player 1</th>
-        <th>Player 2</th>
-        <th>Player 3</th>
-        <th>Player 4</th>
-      </tr>
-      <tr>
-        <td id="cell-0">
-          <div id="player-id-0" style="min-height:1.5em;"></div>
-          <div id="qr-0"><button onclick="joinPlayer(0)">Join</button></div>
-          <div id="area-0" style="display:none; margin-top:12px;">
-            <label for="messages-0">Player 1 Messages:</label><br />
-            <textarea id="messages-0" rows="6" cols="30" readonly style="resize:vertical;"></textarea>
-          </div>
-        </td>
-        <td id="cell-1">
-          <div id="player-id-1" style="min-height:1.5em;"></div>
-          <div id="qr-1"><button onclick="joinPlayer(1)">Join</button></div>
-          <div id="area-1" style="display:none; margin-top:12px;">
-            <label for="messages-1">Player 2 Messages:</label><br />
-            <textarea id="messages-1" rows="6" cols="30" readonly style="resize:vertical;"></textarea>
-          </div>
-        </td>
-        <td id="cell-2">
-          <div id="player-id-2" style="min-height:1.5em;"></div>
-          <div id="qr-2"><button onclick="joinPlayer(2)">Join</button></div>
-          <div id="area-2" style="display:none; margin-top:12px;">
-            <label for="messages-2">Player 3 Messages:</label><br />
-            <textarea id="messages-2" rows="6" cols="30" readonly style="resize:vertical;"></textarea>
-          </div>
-        </td>
-        <td id="cell-3">
-          <div id="player-id-3" style="min-height:1.5em;"></div>
-          <div id="qr-3"><button onclick="joinPlayer(3)">Join</button></div>
-          <div id="area-3" style="display:none; margin-top:12px;">
-            <label for="messages-3">Player 4 Messages:</label><br />
-            <textarea id="messages-3" rows="6" cols="30" readonly style="resize:vertical;"></textarea>
-          </div>
-        </td>
-      </tr>
-    </table>
+    <div id="lobby-area" style="text-align: center; margin-bottom: 2rem;">
+      <button onclick="createLobby()" style="padding: 10px 20px; font-size: 18px;">Create Lobby</button>
+      <div id="lobby-qr" style="display: none; margin-top: 1rem;"></div>
+    </div>
+    <div id="players-container"></div>
     <script src="../dist/index.global.js"></script>
     <script>
+      const players = {}; // playerId -> { div, textarea }
 
-      function updatePlayerIdDisplay(idx, playerId) {
-        const playerIdDiv = document.getElementById(`player-id-${idx}`);
-        if (playerId !== undefined) {
-          playerIdDiv.textContent = `Player ID: ${playerId}`;
-        } else {
-          playerIdDiv.textContent = '';
-        }
+      function createLobby() {
+        const lobbyDiv = document.getElementById('lobby-qr');
+        lobbyDiv.style.display = 'block';
+        lobbyDiv.innerHTML = 'Loading...';
+        match.createLobby().then(({ dataUrl, shareURL }) => {
+          lobbyDiv.innerHTML = `
+            <img class='qr' src='${dataUrl}' alt='QR Code' /><br>
+            <a href='${shareURL}' target='_blank' style='color: white;'>Connect</a>
+          `;
+        }).catch(err => {
+          lobbyDiv.innerHTML = `<span style='color:red;'>Error: ${err.message}</span>`;
+        });
       }
 
       function handlePlayerEvent(event) {
-        let idx = -1;
-        for (let i = 0; i < 4; i++) {
-          const div = document.getElementById(`qr-${i}`);
-          if (div.dataset.playerId === event.playerId) {
-            idx = i;
-            break;
-          }
-        }
-        if (idx === -1 && event.action === "JOIN") {
-          for (let i = 0; i < 4; i++) {
-            const div = document.getElementById(`qr-${i}`);
-            if (!div.dataset.playerId) {
-              div.dataset.playerId = event.playerId;
-              idx = i;
-              break;
-            }
-          }
-        }
-        if (idx === -1) return;
-        const qrDiv = document.getElementById(`qr-${idx}`);
-        const areaDiv = document.getElementById(`area-${idx}`);
-        const area = document.getElementById(`messages-${idx}`);
+        const playerId = event.playerId;
         switch (event.action) {
           case "JOIN": {
-            qrDiv.dataset.playerId = event.playerId;
-            const joinBtn = qrDiv.querySelector('button');
-            if (joinBtn) joinBtn.style.display = 'none';
-            const qrImg = qrDiv.querySelector('img.qr');
-            if (qrImg) qrImg.remove();
-            areaDiv.style.display = '';
-            area.value = 'Player joined!\n';
-            updatePlayerIdDisplay(idx, event.playerId);
+            // Add join message to all players
+            for (const p of Object.values(players)) {
+              p.textarea.value += `${event.playerName} joined!\n`;
+            }
+            if (!players[playerId]) {
+              const playerDiv = document.createElement('div');
+              playerDiv.className = 'player-column';
+              playerDiv.innerHTML = `
+                <div style="margin-bottom: 10px;">Player ID: ${playerId} ${event.playerName}</div>
+                <label>Messages:</label><br>
+                <textarea rows="10" readonly></textarea>
+              `;
+              document.getElementById('players-container').appendChild(playerDiv);
+              players[playerId] = {
+                div: playerDiv,
+                textarea: playerDiv.querySelector('textarea')
+              };
+            }
             break;
           }
           case "LEAVE": {
-            const joinBtn2 = qrDiv.querySelector('button');
-            if (joinBtn2) joinBtn2.style.display = '';
-            areaDiv.style.display = 'none';
-            area.value += 'Player left!\n';
-            updatePlayerIdDisplay(idx, undefined);
-            delete qrDiv.dataset.playerId;
-            qrDiv.innerHTML = '<button onclick="joinPlayer(' + idx + ')">Join</button>';
+            // Add leave message to all players
+            for (const p of Object.values(players)) {
+              p.textarea.value += `${event.playerName} Left!\n`;
+            }
+            if (players[playerId]) {
+              players[playerId].div.remove();
+              delete players[playerId];
+            }
             break;
           }
           case "MOVE":
-            area.value += `Player ${event.playerId} pressed ${event.button}\n`;
+            if (players[playerId]) {
+              players[playerId].textarea.value += `${event.playerName} Pressed ${event.button}\n`;
+            }
             break;
           default:
-            area.value += JSON.stringify(event) + '\n';
+            if (players[playerId]) {
+              players[playerId].textarea.value += JSON.stringify(event) + '\n';
+            }
             break;
         }
-        area.scrollTop = area.scrollHeight;
+        // Scroll all textareas
+        for (const p of Object.values(players)) {
+          p.textarea.scrollTop = p.textarea.scrollHeight;
+        }
       }
 
       const match = new TouchCoop.Match(
-        "https://slaneyee.github.io/touch-coop/demos/gamepad",
+        "http://localhost:8080/demos/gamepad",
         handlePlayerEvent
       );
-
-      window.joinPlayer = async function(idx) {
-        const qrDiv = document.getElementById(`qr-${idx}`);
-        const playerIdDiv = document.getElementById(`player-id-${idx}`);
-        qrDiv.innerHTML = 'Loading...';
-        playerIdDiv.textContent = '';
-        try {
-          const { dataUrl, shareURL } = await match.requestNewPlayerToJoin();
-          qrDiv.innerHTML = `
-            <img class='qr' src='${dataUrl}' alt='QR Code' /></br>
-            <a href='${shareURL}' target='_blank'>Connect</a>
-          `;
-        } catch (err) {
-          qrDiv.innerHTML = `<span style='color:red;'>Error</span>`;
-        }
-      };
     </script>
   </body>
 </html>

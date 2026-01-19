@@ -1,6 +1,7 @@
 import { type PeerOptions } from "peerjs";
 export interface BasePlayerEvent {
     playerId: string;
+    playerName: string;
     timestamp: number;
 }
 export interface JoinLeaveEvent {
@@ -17,10 +18,11 @@ export declare class Match {
     private _playerConnections;
     private _invitationAccepted;
     private _connectionToPlayerId;
+    private _playerNames;
     private _onPlayerEvent;
     private _gamepadUiUrl;
     constructor(gamepadUiUrl: string, onPlayerEvent: OnPlayerEventHandler, peerConfig?: PeerOptions);
-    requestNewPlayerToJoin(): Promise<{
+    createLobby(): Promise<{
         dataUrl: string;
         shareURL: string;
     }>;
