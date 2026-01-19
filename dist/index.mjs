@@ -4755,84 +4755,81 @@ function Mr() {
 var Ar = Mr();
 const Lr = /* @__PURE__ */ Rn(Ar);
 class Or {
-  constructor(e, n, t) {
-    this._playerConnections = /* @__PURE__ */ new Map(), this._invitationAccepted = /* @__PURE__ */ new Map(), this._connectionToPlayerId = /* @__PURE__ */ new Map(), this._playerNames = /* @__PURE__ */ new Map(), this._onPlayerEvent = null, this._onPlayerEvent = n, this._gamepadUiUrl = e, this._peer = t ? new he(t) : new he(), this._peer.on("open", (i) => {
-      console.log(`Host PeerJS ID: ${i}`);
-    }), this._peer.on("connection", (i) => {
-      i.on("open", () => {
-        console.log(`Connection open for PeerJS ID: ${i.peer}`);
-      }), i.on("data", (s) => {
-        if (this._onPlayerEvent) {
-          let o;
-          if (typeof s == "string")
-            try {
-              o = JSON.parse(s);
-            } catch {
-              console.warn("Invalid JSON from player", i.peer, s);
+  constructor() {
+    this._peer = null, this._playerConnections = /* @__PURE__ */ new Map(), this._invitationAccepted = /* @__PURE__ */ new Map(), this._connectionToPlayerId = /* @__PURE__ */ new Map(), this._playerNames = /* @__PURE__ */ new Map(), this._onPlayerEvent = null, this._gamepadUiUrl = null;
+  }
+  async createLobby(e, n, t) {
+    return new Promise((i, s) => {
+      this._onPlayerEvent = n, this._gamepadUiUrl = e, this._peer = t ? new he(t) : new he(), this._peer.on("open", (o) => {
+        if (console.log(`Host PeerJS ID: ${o}`), !o)
+          return s(new Error("Host Peer ID not yet assigned"));
+        const a = `${this._gamepadUiUrl}?hostPeerId=${encodeURIComponent(o)}`;
+        Lr.toDataURL(
+          a,
+          { errorCorrectionLevel: "M" },
+          (c, f) => {
+            if (c) return s(c);
+            i({
+              dataUrl: f,
+              shareURL: a
+            });
+          }
+        );
+      }), this._peer.on("connection", (o) => {
+        o.on("open", () => {
+          console.log(`Connection open for PeerJS ID: ${o.peer}`);
+        }), o.on("data", (a) => {
+          if (this._onPlayerEvent) {
+            let c;
+            if (typeof a == "string")
+              try {
+                c = JSON.parse(a);
+              } catch {
+                console.warn("Invalid JSON from player", o.peer, a);
+                return;
+              }
+            else if (typeof a == "object" && a !== null)
+              c = a;
+            else {
+              console.warn(
+                "Unexpected data type from player",
+                o.peer,
+                a
+              );
               return;
             }
-          else if (typeof s == "object" && s !== null)
-            o = s;
-          else {
-            console.warn(
-              "Unexpected data type from player",
-              i.peer,
-              s
+            let f;
+            if ("playerId" in c && typeof c.playerId == "string" && (f = c.playerId), f === void 0) {
+              console.warn("Malformed event from player", o.peer, c);
+              return;
+            }
+            c.playerId = f, "action" in c && "timestamp" in c ? (c.action === "JOIN" && (this._playerConnections.set(c.playerId, o), this._invitationAccepted.set(c.playerId, !0), this._connectionToPlayerId.set(o, c.playerId), this._playerNames.set(c.playerId, c.playerName)), c.action === "MOVE" && (c.playerName = this._playerNames.get(c.playerId) || ""), this._onPlayerEvent(c)) : console.warn("Malformed event from player", o.peer, c);
+          }
+        }), o.on("close", () => {
+          const a = this._connectionToPlayerId.get(o);
+          if (a !== void 0) {
+            this._playerConnections.delete(a), this._invitationAccepted.delete(a), this._connectionToPlayerId.delete(o);
+            const c = this._playerNames.get(a) || "";
+            this._playerNames.delete(a), this._onPlayerEvent && this._onPlayerEvent({
+              playerId: a,
+              action: "LEAVE",
+              playerName: c,
+              timestamp: Date.now()
+            }), console.log(`Player ${a} disconnected`);
+          } else
+            console.log(
+              `Connection closed for unknown player (PeerJS ID: ${o.peer})`
             );
-            return;
-          }
-          let a;
-          if ("playerId" in o && typeof o.playerId == "string" && (a = o.playerId), a === void 0) {
-            console.warn("Malformed event from player", i.peer, o);
-            return;
-          }
-          o.playerId = a, "action" in o && "timestamp" in o ? (o.action === "JOIN" && (this._playerConnections.set(o.playerId, i), this._invitationAccepted.set(o.playerId, !0), this._connectionToPlayerId.set(i, o.playerId), this._playerNames.set(o.playerId, o.playerName)), o.action === "MOVE" && (o.playerName = this._playerNames.get(o.playerId) || ""), this._onPlayerEvent(o)) : console.warn("Malformed event from player", i.peer, o);
-        }
-      }), i.on("close", () => {
-        const s = this._connectionToPlayerId.get(i);
-        if (s !== void 0) {
-          this._playerConnections.delete(s), this._invitationAccepted.delete(s), this._connectionToPlayerId.delete(i);
-          const o = this._playerNames.get(s) || "";
-          this._playerNames.delete(s), this._onPlayerEvent && this._onPlayerEvent({
-            playerId: s,
-            action: "LEAVE",
-            playerName: o,
-            timestamp: Date.now()
-          }), console.log(`Player ${s} disconnected`);
-        } else
-          console.log(
-            `Connection closed for unknown player (PeerJS ID: ${i.peer})`
+        }), o.on("error", (a) => {
+          const c = this._connectionToPlayerId.get(o);
+          c !== void 0 ? (console.error(`Connection error for player ${c}:`, a), this._playerConnections.delete(c), this._invitationAccepted.delete(c), this._connectionToPlayerId.delete(o), this._playerNames.delete(c)) : console.error(
+            `Connection error for unknown player (PeerJS ID: ${o.peer}):`,
+            a
           );
-      }), i.on("error", (s) => {
-        const o = this._connectionToPlayerId.get(i);
-        o !== void 0 ? (console.error(`Connection error for player ${o}:`, s), this._playerConnections.delete(o), this._invitationAccepted.delete(o), this._connectionToPlayerId.delete(i), this._playerNames.delete(o)) : console.error(
-          `Connection error for unknown player (PeerJS ID: ${i.peer}):`,
-          s
-        );
+        });
+      }), this._peer.on("error", (o) => {
+        console.error("PeerJS error:", o);
       });
-    }), this._peer.on("error", (i) => {
-      console.error("PeerJS error:", i);
-    });
-  }
-  async createLobby() {
-    return new Promise((e, n) => {
-      if (this._peer.destroyed || !this._peer.open)
-        return n(new Error("Host Peer is not open or has been destroyed"));
-      const t = this._peer.id;
-      if (!t)
-        return n(new Error("Host Peer ID not yet assigned"));
-      const i = `${this._gamepadUiUrl}?hostPeerId=${encodeURIComponent(t)}`;
-      Lr.toDataURL(
-        i,
-        { errorCorrectionLevel: "M" },
-        (s, o) => {
-          if (s) return n(s);
-          e({
-            dataUrl: o,
-            shareURL: i
-          });
-        }
-      );
     });
   }
   getInvitationStatus(e) {
@@ -4841,7 +4838,7 @@ class Or {
   destroy() {
     for (const e of this._playerConnections.keys())
       this._invitationAccepted.delete(e);
-    this._playerConnections.clear(), this._invitationAccepted.clear(), this._connectionToPlayerId.clear(), this._playerNames.clear(), this._peer.destroy();
+    this._playerConnections.clear(), this._invitationAccepted.clear(), this._connectionToPlayerId.clear(), this._playerNames.clear(), this._peer && (this._peer.destroy(), this._peer = null);
   }
 }
 export {

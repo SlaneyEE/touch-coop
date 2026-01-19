@@ -21,8 +21,7 @@ export declare class Match {
     private _playerNames;
     private _onPlayerEvent;
     private _gamepadUiUrl;
-    constructor(gamepadUiUrl: string, onPlayerEvent: OnPlayerEventHandler, peerConfig?: PeerOptions);
-    createLobby(): Promise<{
+    createLobby(gamepadUiUrl: string, onPlayerEvent: OnPlayerEventHandler, peerConfig?: PeerOptions): Promise<{
         dataUrl: string;
         shareURL: string;
     }>;
