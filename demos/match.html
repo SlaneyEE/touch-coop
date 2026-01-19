@@ -82,7 +82,7 @@
         lobbyDiv.style.display = 'block';
         lobbyDiv.innerHTML = 'Loading...';
         match.createLobby(
-          "http://localhost:8080/demos/gamepad",
+          "https://slaneyee.github.io/touch-coop/demos/gamepad",
           handlePlayerEvent
         ).then(({ dataUrl, shareURL }) => {
           lobbyDiv.innerHTML = `
