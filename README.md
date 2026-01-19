@@ -2,7 +2,7 @@
 
 A TypeScript library that enables couch co-op gaming on the web, using mobile devices as controllers.
 
-<img src="./media/logo.png" alt="Example" width="300">
+<img src="https://raw.githubusercontent.com/SlaneyEE/touch-coop/main/media/logo.png" alt="Example" width="300">
 
 ## Purpose
 
@@ -138,7 +138,7 @@ export default function GamePad() {
 
 You can try a live demo of TouchCoop at [https://SlaneyEE.github.io/touch-coop/demos/match.html](https://SlaneyEE.github.io/touch-coop/demos/match.html).
 
-![](./media/demo.png)
+![](https://raw.githubusercontent.com/SlaneyEE/touch-coop/main/media/demo.png)
 
 The demo contains a simple game where players can join by scaning a QR Code and use their mobile devices as controllers. Each player can use the on-screen buttons to send input events to the game.
 
