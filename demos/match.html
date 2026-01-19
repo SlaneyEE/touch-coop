@@ -1,9 +1,10 @@
 <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Touch Coop Game Demo</title>
+    <title>Touch Coop Demo</title>
     <style>
       body { background-color: black; color: white; }
       table { border-collapse: collapse; width: 100%; }
@@ -14,7 +15,7 @@
     </style>
   </head>
   <body>
-    <image src="../media/logo.png" alt="Touch Coop Logo" style="width:200px; display:block; margin:auto;" />
+    <image src="https://github.com/SlaneyEE/touch-coop/raw/main/media/logo.png" alt="Touch Coop Logo" style="width:200px; display:block; margin:auto; margin-top: 2rem;" />
     <h1>TouchCoop Demo</h1>
     <table id="players-table">
       <tr>
@@ -63,7 +64,7 @@
 
       function updatePlayerIdDisplay(idx, playerId) {
         const playerIdDiv = document.getElementById(`player-id-${idx}`);
-        if (playerId) {
+        if (playerId !== undefined) {
           playerIdDiv.textContent = `Player ID: ${playerId}`;
         } else {
           playerIdDiv.textContent = '';
@@ -71,7 +72,6 @@
       }
 
       function handlePlayerEvent(event) {
-        // Find the player slot idx
         let idx = -1;
         for (let i = 0; i < 4; i++) {
           const div = document.getElementById(`qr-${i}`);
@@ -80,7 +80,6 @@
             break;
           }
         }
-        // If not found and this is a JOIN, assign to first available
         if (idx === -1 && event.action === "JOIN") {
           for (let i = 0; i < 4; i++) {
             const div = document.getElementById(`qr-${i}`);
@@ -103,7 +102,7 @@
             const qrImg = qrDiv.querySelector('img.qr');
             if (qrImg) qrImg.remove();
             areaDiv.style.display = '';
-            area.value += 'Player joined!\n';
+            area.value = 'Player joined!\n';
             updatePlayerIdDisplay(idx, event.playerId);
             break;
           }
@@ -112,7 +111,7 @@
             if (joinBtn2) joinBtn2.style.display = '';
             areaDiv.style.display = 'none';
             area.value += 'Player left!\n';
-            updatePlayerIdDisplay(idx, '');
+            updatePlayerIdDisplay(idx, undefined);
             delete qrDiv.dataset.playerId;
             qrDiv.innerHTML = '<button onclick="joinPlayer(' + idx + ')">Join</button>';
             break;
@@ -138,13 +137,11 @@
         qrDiv.innerHTML = 'Loading...';
         playerIdDiv.textContent = '';
         try {
-          const { dataUrl, playerId, shareURL } = await match.requestNewPlayerToJoin();
-          qrDiv.dataset.playerId = playerId || '';
+          const { dataUrl, shareURL } = await match.requestNewPlayerToJoin();
           qrDiv.innerHTML = `
             <img class='qr' src='${dataUrl}' alt='QR Code' /></br>
             <a href='${shareURL}' target='_blank'>Connect</a>
           `;
-          updatePlayerIdDisplay(idx, playerId);
         } catch (err) {
           qrDiv.innerHTML = `<span style='color:red;'>Error</span>`;
         }
