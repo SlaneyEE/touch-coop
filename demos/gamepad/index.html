@@ -13,6 +13,8 @@
 </head>
 <body>
 	<h1>Gamepad Controller</h1>
+	<button id="joinBtn">Join Game</button>
+	<div id="gamepad" style="display: none;">
 	<div style="display: flex; flex-direction: row; gap: 80px; margin-top: 32px;">
 		<div class="gamepad" style="grid-template-columns: 60px 60px 60px;">
 			<div></div>
@@ -32,12 +34,15 @@
 			<button id="b">B</button>
 		</div>
 	</div>
+	</div>
 		<script src="../../dist/index.global.js"></script>
 		<script>
 		const player = new TouchCoop.Player();
 		window.player = player;
 
-		(async () => {
+		document.getElementById("joinBtn").onclick = async () => {
+			document.getElementById("joinBtn").style.display = "none";
+			document.getElementById("gamepad").style.display = "block";
 			await player.joinMatch();
 			function sendButtonEvent(btn) {
 				player.sendMove(btn);
@@ -51,7 +56,7 @@
 			document.getElementById("b").onclick = () => sendButtonEvent("B");
 			document.getElementById("x").onclick = () => sendButtonEvent("X");
 			document.getElementById("y").onclick = () => sendButtonEvent("Y");
-		})();
+		};
 		</script>
 </body>
 </html>

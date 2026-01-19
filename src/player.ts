@@ -1,83 +1,118 @@
-import { decompressOfferData } from "./encoding";
+import Peer, { type DataConnection, type PeerOptions } from "peerjs";
 import type { PlayerEvent } from "./match";
 
 export class Player {
-  private _pc: RTCPeerConnection;
+  private _peer: Peer;
   private _playerId: string | null = null;
-  private _dataChannel: RTCDataChannel | null = null;
-  constructor() {
-    this._pc = new RTCPeerConnection();
-    this._pc.ondatachannel = (event) => {
-      this._dataChannel = event.channel;
-      this._dataChannel.onopen = () => {
-        if (this._playerId && this._dataChannel) {
-          const joinEvent = {
+  private _dataConnection: DataConnection | null = null;
+  private _ownIdPromise: Promise<string>;
+
+  constructor(peerConfig?: PeerOptions) {
+    this._peer = peerConfig ? new Peer(peerConfig) : new Peer();
+
+    this._ownIdPromise = new Promise<string>((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error("Peer ID not assigned in time")),
+        10000,
+      );
+      this._peer.on("open", (id) => {
+        clearTimeout(timeout);
+        this._playerId = id;
+        resolve(id);
+      });
+      this._peer.on("error", (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
+
+    this._peer.on("error", (err) => {
+      console.error("PeerJS error:", err.type, err.message);
+    });
+
+    window.addEventListener("beforeunload", () => {
+      if (this._dataConnection?.open && this._playerId !== null) {
+        const leaveEvent: PlayerEvent = {
+          playerId: this._playerId,
+          action: "LEAVE",
+          timestamp: Date.now(),
+        };
+        try {
+          this._dataConnection.send(leaveEvent);
+        } catch (err) {
+          console.warn("Failed to send LEAVE:", err);
+        }
+      }
+      this._dataConnection?.close();
+      this._peer.destroy();
+    });
+  }
+
+  async joinMatch() {
+    const params = new URLSearchParams(window.location.search);
+    const hostPeerId = params.get("hostPeerId");
+    if (!hostPeerId) {
+      throw new Error("No hostPeerId found in URL parameters.");
+    }
+
+    const conn = this._peer.connect(hostPeerId, {
+      reliable: false,
+    });
+
+    this._dataConnection = conn;
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        conn.close();
+        reject(new Error("Connection timeout"));
+      }, 15000);
+
+      conn.on("open", () => {
+        clearTimeout(timeout);
+        if (this._playerId) {
+          const joinEvent: PlayerEvent = {
             playerId: this._playerId,
             action: "JOIN",
             timestamp: Date.now(),
           };
-          this._dataChannel.send(JSON.stringify(joinEvent));
+          conn.send(joinEvent);
+          console.log("JOIN sent, data connection open");
+          resolve();
+        } else {
+          this._ownIdPromise
+            .then((playerId) => {
+              const joinEvent: PlayerEvent = {
+                playerId,
+                action: "JOIN",
+                timestamp: Date.now(),
+              };
+              conn.send(joinEvent);
+              console.log("JOIN sent, data connection open");
+              resolve();
+            })
+            .catch(reject);
         }
-      };
-    };
-    window.addEventListener("beforeunload", () => {
-      if (
-        this._dataChannel &&
-        this._dataChannel.readyState === "open" &&
-        this._playerId
-      ) {
-        const leaveEvent = {
-          playerId: this._playerId,
-          action: "LEAVE",
-          button: "",
-          timestamp: Date.now(),
-        };
-        try {
-          this._dataChannel.send(JSON.stringify(leaveEvent));
-        } catch {}
-      }
+      });
+
+      conn.on("error", (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
+
+    conn.on("data", (data: unknown) => {
+      console.log("Received from host:", data);
+    });
+
+    conn.on("close", () => {
+      console.log("Data connection closed by host");
+      this._dataConnection = null;
     });
   }
-  async joinMatch() {
-    const params = new URLSearchParams(window.location.search);
-    const remoteBase64 = params.get("remoteSDP");
-    if (!remoteBase64) {
-      throw new Error("No remoteSDP found in URL parameters.");
-    }
-    const decodedURL = await decompressOfferData(remoteBase64);
-    const remoteObject = JSON.parse(decodedURL);
-    this._playerId = remoteObject.playerId;
-    const remoteSDP = remoteObject.sdp;
-    await this._pc.setRemoteDescription(remoteSDP);
-    if (remoteSDP.type === "offer") {
-      const answer = await this._pc.createAnswer();
-      await this._pc.setLocalDescription(answer);
-      await new Promise((resolve) => {
-        this._pc.onicecandidate = (event) => {
-          if (!event.candidate) {
-            resolve(void 0);
-          }
-        };
-      });
-      const answerObject = {
-        playerId: this._playerId,
-        sdp: this._pc.localDescription,
-      };
-      const answerJSON = JSON.stringify(answerObject);
-      const base64AnswerObject = btoa(answerJSON);
-      const channel = new BroadcastChannel("touch-coop-signaling");
-      const msg = {
-        type: "answer",
-        playerId: this._playerId,
-        base64Answer: base64AnswerObject,
-      };
-      channel.postMessage(msg);
-      channel.close();
-    }
-  }
+
   async sendMove(button: string) {
-    if (this._dataChannel && this._dataChannel.readyState === "open") {
-      if (!this._playerId) {
+    if (this._dataConnection?.open) {
+      if (this._playerId === null) {
         throw new Error("Player ID is not set. Cannot send data.");
       }
       const playerEvent: PlayerEvent = {
@@ -86,10 +121,18 @@ export class Player {
         button: button,
         timestamp: Date.now(),
       };
-      const playerEventJSON = JSON.stringify(playerEvent);
-      this._dataChannel.send(playerEventJSON);
+      this._dataConnection.send(playerEvent);
     } else {
-      console.warn("Data channel is not open. Cannot send data.");
+      console.warn("Data connection is not open. Cannot send move.");
     }
+  }
+
+  get isConnected(): boolean {
+    return !!this._dataConnection?.open;
+  }
+
+  destroy() {
+    this._dataConnection?.close();
+    this._peer.destroy();
   }
 }

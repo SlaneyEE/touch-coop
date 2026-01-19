@@ -18,18 +18,14 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       external: (id) => {
-        // For IIFE (browser), bundle all dependencies (including qrcode)
         if (/qrcode/.test(id)) {
-          // Only externalize for es/cjs
           const format = process.env.BUILD_FORMAT;
           return format === "es" || format === "cjs";
         }
         return false;
       },
       output: {
-        globals: {
-          // No external globals needed for IIFE
-        },
+        globals: {},
       },
     },
   },

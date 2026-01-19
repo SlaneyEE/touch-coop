@@ -1,4 +1,4 @@
-# TouchCoop
+# Touch-Coop
 
 A TypeScript library that enables couch co-op gaming on the web, using mobile devices as controllers.
 
@@ -12,7 +12,26 @@ TouchCoop is intended for playing games on a TV or monitor, while players use th
 
 TouchCoop is ideal for casual multiplayer games, such as platformers, puzzle games, or party games. TouchCoop is not intended for games that require low-latency input, such as first-person shooters.
 
-TouchCoop does not require servers or user accounts. All communication is done using WebRTC, which allows for peer-to-peer connections between the players' devices.
+TouchCoop does not require servers or user accounts for gameplay. However, it requires the PeerJS server (or your own signaling server) for initial connection setup. All communication is done using WebRTC, which allows for peer-to-peer connections between the players' devices.
+
+## Powered by PeerJS
+
+TouchCoop is powered by [PeerJS](https://peerjs.com/), which provides a simple API for WebRTC peer-to-peer connections. By default, TouchCoop uses the public PeerJS servers for signaling and STUN/TURN services.
+
+- **Status Page**: Check the status of PeerJS public servers at [https://status.peerjs.com/](https://status.peerjs.com/).
+- **Custom Servers**: If you need more control or reliability, you can deploy your own PeerJS server. See the [PeerJS documentation](https://peerjs.com/docs/#start) for instructions on setting up your own server. You can pass custom PeerJS options to the `Match` and `Player` constructors to connect to your own server.
+
+```ts
+// Example: Using a custom PeerJS server
+const customPeerConfig = {
+  host: 'your-peerjs-server.com',
+  port: 9000,
+  path: '/peerjs'
+};
+
+const match = new Match(gamePadURL, handlePlayerEvent, customPeerConfig);
+const player = new Player(customPeerConfig);
+```
 
 ## Installation
 
