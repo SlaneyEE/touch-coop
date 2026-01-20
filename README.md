@@ -14,27 +14,6 @@ TouchCoop is ideal for casual multiplayer games, such as platformers, puzzle gam
 
 TouchCoop does not require servers or user accounts for gameplay. However, it requires the PeerJS server (or your own signaling server) for initial connection setup. All communication is done using WebRTC, which allows for peer-to-peer connections between the players' devices.
 
-## Powered by PeerJS
-
-TouchCoop is powered by [PeerJS](https://peerjs.com/), which provides a simple API for WebRTC peer-to-peer connections. By default, TouchCoop uses the public PeerJS servers for signaling and STUN/TURN services.
-
-- **Status Page**: Check the status of PeerJS public servers at [https://status.peerjs.com/](https://status.peerjs.com/).
-- **Custom Servers**: If you need more control or reliability, you can deploy your own PeerJS server. See the [PeerJS documentation](https://peerjs.com/docs/#start) for instructions on setting up your own server. You can pass custom PeerJS options to the `Match` and `Player` constructors to connect to your own server.
-
-```ts
-// Example: Using a custom PeerJS server
-import { Match, Player } from "touch-coop";
-const customPeerConfig = {
-    host: 'your-peerjs-server.com',
-    port: 9000,
-    path: '/peerjs'
-};
-
-const match = new Match();
-await match.createLobby(gamePadURL, handlePlayerEvent, customPeerConfig);
-const player = new Player(customPeerConfig);
-```
-
 ## Installation
 
 ```bash
@@ -107,7 +86,7 @@ export function Lobby() {
 
 ### 2. Virtual Controller (Mobile device)
 
-Each player scans a QR code to join the game. The QR code contains a unique URL that opens a web page with touch controls. This page uses the `Player` class to connect to the game match with `player.joinMatch()` and send input events with `player.sendMove("X")`.
+Each player scans a QR code to join the game. The QR code contains a unique URL (`gamePadURL` in the previous step) that opens a web page with touch controls. This page uses the `Player` class to connect to the game match with `player.joinMatch("PLAYER_NAME_HERE")` and send input events with `player.sendMove("X")`.
 
 ```ts
 import React from "react";
@@ -119,41 +98,33 @@ export default function GamePad() {
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
-        ```ts
-        import React from "react";
-        import { Player } from "touch-coop";
+        (async () => {
+            const playerName = prompt("Enter your player name:") || "Player";
+            await player.joinMatch(playerName);
+            setLoading(false);
+        })();
+    }, []);
 
-        const player = new Player();
+    if (loading) {
+        return <div>Loading…</div>;
+    }
 
-        export default function GamePad() {
-            const [loading, setLoading] = React.useState(true);
+    return (
+        <div>
+            <button onClick={() => player.sendMove("up")}>Up</button>
+            <button onClick={() => player.sendMove("down")}>Down</button>
+            <button onClick={() => player.sendMove("left")}>Left</button>
+            <button onClick={() => player.sendMove("right")}>Right</button>
+            <button onClick={() => player.sendMove("A")}>A</button>
+            <button onClick={() => player.sendMove("B")}>B</button>
+            <button onClick={() => player.sendMove("X")}>X</button>
+            <button onClick={() => player.sendMove("Y")}>Y</button>
+        </div>
+    );
+}
+```
 
-            React.useEffect(() => {
-                (async () => {
-                    const playerName = prompt("Enter your player name:") || "Player";
-                    await player.joinMatch(playerName);
-                    setLoading(false);
-                })();
-            }, []);
-
-            if (loading) {
-                return <div>Loading…</div>;
-            }
-
-            return (
-                <div>
-                    <button onClick={() => player.sendMove("up")}>Up</button>
-                    <button onClick={() => player.sendMove("down")}>Down</button>
-                    <button onClick={() => player.sendMove("left")}>Left</button>
-                    <button onClick={() => player.sendMove("right")}>Right</button>
-                    <button onClick={() => player.sendMove("A")}>A</button>
-                    <button onClick={() => player.sendMove("B")}>B</button>
-                    <button onClick={() => player.sendMove("X")}>X</button>
-                    <button onClick={() => player.sendMove("Y")}>Y</button>
-                </div>
-            );
-        }
-        ```
+### Live demo
 
 You can try a live demo of TouchCoop at [https://SlaneyEE.github.io/touch-coop/demos/match.html](https://SlaneyEE.github.io/touch-coop/demos/match.html).
 
@@ -163,38 +134,23 @@ The game page is [./demos/match.html](./demos/match.html). The QR code redirects
 
 You need to run a local server to host the demo files. You can use a simple HTTP server like `http-server` or `live-server` to serve the files from the `root` directory and then access `http://localhost:8080/demos/match.html` in your browser.
 
----
+## Powered by PeerJS
 
-### Match PUBLIC API (v3)
+TouchCoop is powered by [PeerJS](https://peerjs.com/), which provides a simple API for WebRTC peer-to-peer connections. By default, TouchCoop uses the public PeerJS servers for signaling and STUN/TURN services.
 
-#### PlayerEvent type
-
-```ts
-type PlayerEvent =
-    | { action: "JOIN" | "LEAVE"; playerId: string; playerName: string; timestamp: number; }
-    | { action: "MOVE"; playerId: string; playerName: string; button: string; timestamp: number; };
-```
-
-#### Match constructor
+- **Status Page**: Check the status of PeerJS public servers at [https://status.peerjs.com/](https://status.peerjs.com/).
+- **Custom Servers**: If you need more control or reliability, you can deploy your own PeerJS server. See the [PeerJS documentation](https://peerjs.com/docs/#start) for instructions on setting up your own server. You can pass custom PeerJS options to the `Match` and `Player` constructors to connect to your own server.
 
 ```ts
-new Match(gamepadUiUrl: string, onPlayerEvent: (event: PlayerEvent) => void)
-```
+// Example: Using a custom PeerJS server
+import { Match, Player } from "touch-coop";
+const customPeerConfig = {
+    host: 'your-peerjs-server.com',
+    port: 9000,
+    path: '/peerjs'
+};
 
-#### createLobby
-
-```ts
-async createLobby(peerConfig?: Peer.PeerOptions): Promise<{ dataUrl: string; shareURL: string; }>
-```
-
-#### getInvitationStatus
-
-```ts
-getInvitationStatus(playerId: string): boolean | undefined
-```
-
-#### destroy
-
-```ts
-destroy(): void
+const match = new Match();
+await match.createLobby(gamePadURL, handlePlayerEvent, customPeerConfig);
+const player = new Player(customPeerConfig);
 ```
